@@ -660,10 +660,10 @@ int init_bootenv_varibles(char *dev) {
     		set_default_boot_args();
 #endif
 		NOTICE("Cannot read ubootenv varibles - all use default.\n");
-		char envbuf[4*1024];
-		//memset(envbuf, 0, sizeof(envbuf));
-		memcpy(envbuf, default_ubootenv_args, sizeof(envbuf));
-		env_parse_attribute(envbuf);
+		//char envbuf[4*1024];
+		////memset(envbuf, 0, sizeof(envbuf));
+		//memcpy(envbuf, default_ubootenv_args, sizeof(envbuf));
+		//env_parse_attribute(envbuf);
 	}
 
     const char* prefix = property_get("ro.ubootenv.varible.prefix");
