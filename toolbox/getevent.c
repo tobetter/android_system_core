@@ -31,6 +31,24 @@ enum {
 
     PRINT_LABELS            = 1U << 16,
 };
+#define DEBUG 0
+#define DEFAULT_FILE	"/sdcard/external_sdcard/events.txt"
+struct point
+{
+	int x;
+	int y;
+};
+static struct dump_node
+{
+	int state;//State machine: 0: time; 1: id; 2: x; 3: y; 4: sync;
+	int id;
+	struct timeval time;
+	struct point pt[6];
+}node;
+FILE *g_dump = 0;
+int dump_multi_touch = 0;
+
+
 
 static const char *get_label(const struct label *labels, int value)
 {
@@ -248,10 +266,63 @@ static void print_event(int type, int code, int value, int print_flags)
             printf(" %-20.20s", code_label);
         else
             printf(" %04x                ", code);
+#if DEBUG
+	printf("%s, %d\n", code_label, node.state);
+#endif
         if (value_label)
             printf(" %-20.20s", value_label);
         else
+	{
             printf(" %08x            ", value);
+#if 1
+	    if(dump_multi_touch)
+	    {
+		switch(node.state)
+		{
+			case 1:
+				if(0 == strcmp(code_label, "ABS_MT_TRACKING_ID"))	//ID
+				{
+					node.id = value;
+					node.state = 2;
+				}
+					break;
+			case 2:
+				if(0 == strcmp(code_label, "ABS_MT_POSITION_X"))	//X
+				{	node.pt[node.id].x = value;
+					node.state = 3;
+				}
+					break;
+			case 3:	
+				if(0 == strcmp(code_label, "ABS_MT_POSITION_Y"))	//Y
+				{
+					node.pt[node.id].y = value;
+					node.state = 4;
+				}
+				break;
+			case 4:
+				if(0 == strcmp(code_label, "SYN_MT_REPORT"))	//sync;
+				{
+					
+				if(g_dump){
+						fprintf(g_dump, "%06d %06d\t", node.pt[node.id].x, node.pt[node.id].y);
+					
+						fflush(g_dump);
+				}
+					node.state = 0;	
+
+				}
+					break;
+		}
+
+		if(0 == strcmp(code_label, "SYN_REPORT"))	//sync;
+		{
+				memset(&node, 0, sizeof(node));
+				if(g_dump)
+  				fprintf(g_dump, "\n");
+		}
+		}
+#endif
+	}
     } else {
         printf("%04x %04x %08x", type, code, value);
     }
@@ -472,7 +543,7 @@ static int scan_dir(const char *dirname, int print_flags)
 
 static void usage(int argc, char *argv[])
 {
-    fprintf(stderr, "Usage: %s [-t] [-n] [-s switchmask] [-S] [-v [mask]] [-d] [-p] [-i] [-l] [-q] [-c count] [-r] [device]\n", argv[0]);
+    fprintf(stderr, "Usage: %s [-t] [-n] [-s switchmask] [-S] [-v [mask]] [-d] [-p] [-i] [-l] [-q] [-c count] [-r] [device] [file]\n", argv[0]);
     fprintf(stderr, "    -t: show time stamps\n");
     fprintf(stderr, "    -n: don't print newlines\n");
     fprintf(stderr, "    -s: print switch states for given bits\n");
@@ -485,6 +556,7 @@ static void usage(int argc, char *argv[])
     fprintf(stderr, "    -q: quiet (clear verbosity mask)\n");
     fprintf(stderr, "    -c: print given number of events then exit\n");
     fprintf(stderr, "    -r: print rate events are received\n");
+    fprintf(stderr, "    -D: dump coordinates of touch-points to file, if [file] is not specified in the command line, use /sdcard/external_sdcard/events.txt as default\n");
 }
 
 int getevent_main(int argc, char *argv[])
@@ -507,10 +579,12 @@ int getevent_main(int argc, char *argv[])
     int64_t last_sync_time = 0;
     const char *device = NULL;
     const char *device_path = "/dev/input";
+	
+    const char *dump_file = NULL;
 
     opterr = 0;
     do {
-        c = getopt(argc, argv, "tns:Sv::dpilqc:rh");
+        c = getopt(argc, argv, "tns:Sv::dpilqc:rh:D");
         if (c == EOF)
             break;
         switch (c) {
@@ -572,15 +646,46 @@ int getevent_main(int argc, char *argv[])
         case 'h':
             usage(argc, argv);
             exit(1);
+	case 'D':
+		dump_multi_touch = 1;
+            	print_flags |= PRINT_LABELS;
         }
     } while (1);
     if(dont_block == -1)
         dont_block = 0;
 
-    if (optind + 1 == argc) {
-        device = argv[optind];
-        optind++;
-    }
+	if(dump_multi_touch)
+	{
+	    if (optind + 1 == argc) {
+		device = argv[optind];
+		optind++;
+		dump_file = DEFAULT_FILE;
+	    }else if(optind + 2 == argc) {
+	    	device = argv[optind];
+		optind++;
+		dump_file = argv[optind];
+		optind++;
+	    	printf("device %s dump to file %s\n", device, dump_file);
+		}
+		else
+		{
+			usage(argc, argv);
+			exit(1);
+		}
+		g_dump = fopen(dump_file, "w");
+		if(!g_dump)
+		{
+			printf("Failed to create file %s\n", DEFAULT_FILE);
+			exit(1);
+		}
+	}
+	else
+	{
+	    if (optind + 1 == argc) {
+		device = argv[optind];
+		optind++;
+	    }
+	}
     if (optind != argc) {
         usage(argc, argv);
         exit(1);
@@ -642,9 +747,15 @@ int getevent_main(int argc, char *argv[])
                         fprintf(stderr, "could not get event\n");
                         return 1;
                     }
+		if(dump_multi_touch)
+		{
+			if(node.state == 0)
+				node.state = 1;
+		}
                     if(get_time) {
                         printf("[%8ld.%06ld] ", event.time.tv_sec, event.time.tv_usec);
                     }
+                    
                     if(print_device)
                         printf("%s: ", device_names[i]);
                     print_event(event.type, event.code, event.value, print_flags);
@@ -656,11 +767,17 @@ int getevent_main(int argc, char *argv[])
                     }
                     printf("%s", newline);
                     if(event_count && --event_count == 0)
+		    {
+		    	if(g_dump)
+				fclose(g_dump);
                         return 0;
+			}
                 }
             }
         }
     }
 
+    if(g_dump)
+    	fclose(g_dump);
     return 0;
 }

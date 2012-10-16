@@ -36,6 +36,8 @@ int do_chmod(int nargs, char **args);
 int do_loglevel(int nargs, char **args);
 int do_load_persist_props(int nargs, char **args);
 int do_wait(int nargs, char **args);
+int do_ubiattach(int argc, char **args);
+int do_ubidetach(int argc, char **args);
 #define __MAKE_KEYWORD_ENUM__
 #define KEYWORD(symbol, flags, nargs, func) K_##symbol,
 enum {
@@ -50,6 +52,7 @@ enum {
     KEYWORD(class_reset, COMMAND, 1, do_class_reset)
     KEYWORD(console,     OPTION,  0, 0)
     KEYWORD(critical,    OPTION,  0, 0)
+    KEYWORD(dalvik_recache,    OPTION,  0, 0)
     KEYWORD(disabled,    OPTION,  0, 0)
     KEYWORD(domainname,  COMMAND, 1, do_domainname)
     KEYWORD(exec,        COMMAND, 1, do_exec)
@@ -93,6 +96,8 @@ enum {
     KEYWORD(chmod,       COMMAND, 2, do_chmod)
     KEYWORD(loglevel,    COMMAND, 1, do_loglevel)
     KEYWORD(load_persist_props,    COMMAND, 0, do_load_persist_props)
+    KEYWORD(ubiattach,   COMMAND, 1, do_ubiattach)
+    KEYWORD(ubidetach,   COMMAND, 1, do_ubidetach)
     KEYWORD(ioprio,      OPTION,  0, 0)
 #ifdef __MAKE_KEYWORD_ENUM__
     KEYWORD_COUNT,

@@ -146,7 +146,12 @@ void set_device_permission(int nargs, char **args)
         if (n >= 0)
             asprintf(&tmp, "/dev/mtd/mtd%d", n);
         name = tmp;
-    } else {
+    } else if (!strncmp(name, "inand@", 6)) {
+        int n = mtd_name_to_number(name + 6);
+        if (n >= 0)
+            asprintf(&tmp, "/dev/block/cardblkinand%d", n);
+        name = tmp;
+    } else{
         int len = strlen(name);
         if (name[len - 1] == '*') {
             prefix = 1;

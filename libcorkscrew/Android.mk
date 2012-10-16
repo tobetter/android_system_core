@@ -91,3 +91,34 @@ LOCAL_MODULE_TAGS := optional
 include $(BUILD_HOST_EXECUTABLE)
 
 endif # linux-x86
+
+include $(CLEAR_VARS)
+
+LOCAL_SRC_FILES := \
+	backtrace.c \
+	backtrace-helper.c \
+	demangle.c \
+	map_info.c \
+	ptrace.c \
+	symbol_table.c
+
+ifeq ($(TARGET_ARCH),arm)
+LOCAL_SRC_FILES += \
+	arch-arm/backtrace-arm.c \
+	arch-arm/ptrace-arm.c
+LOCAL_CFLAGS += -DCORKSCREW_HAVE_ARCH
+endif
+ifeq ($(TARGET_ARCH),x86)
+LOCAL_SRC_FILES += \
+	arch-x86/backtrace-x86.c \
+	arch-x86/ptrace-x86.c
+LOCAL_CFLAGS += -DCORKSCREW_HAVE_ARCH
+endif
+
+LOCAL_SHARED_LIBRARIES += libdl libcutils libgccdemangle
+
+LOCAL_CFLAGS += -std=gnu99 -Werror
+LOCAL_MODULE := libcorkscrew
+LOCAL_MODULE_TAGS := optional
+
+include $(BUILD_STATIC_LIBRARY)

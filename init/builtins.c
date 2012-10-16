@@ -47,8 +47,11 @@
 #include "init_parser.h"
 #include "util.h"
 #include "log.h"
+#include "libubi.h"
 
 #include <private/android_filesystem_config.h>
+
+#define DEFAULT_CTRL_DEV "/dev/ubi_ctrl"
 
 void add_environment(const char *name, const char *value);
 
@@ -404,6 +407,14 @@ int do_mount(int nargs, char **args)
             return -1;
         }
 
+        goto exit_success;
+    } else if (!strncmp(system, "ubifs", 5)) {
+        if (mount(source, target, system, flags, options) < 0) {
+        	printf("ubifs mount failed and remount here\n");
+        	if (mount(source, target, system, flags, options) < 0) {
+            		return -1;
+            	}
+        }
         goto exit_success;
     } else if (!strncmp(source, "loop@", 5)) {
         int mode, loop, fd;
@@ -817,4 +828,168 @@ int do_wait(int nargs, char **args)
         return wait_for_file(args[1], atoi(args[2]));
     } else
         return -1;
+}
+int do_ubiattach(int argc, char **args)
+{
+    INFO("\n=== do_ubiattach start ===\n");
+    int err;
+    libubi_t libubi;
+    struct ubi_info ubi_info;
+    struct ubi_dev_info dev_info;
+    struct ubi_attach_request req;
+    char *target;
+    int n;
+
+    target = args[1];
+    if (!strncmp(target, "mtd@", 4)) {
+        n = mtd_name_to_number(target + 4);
+        if (n < 0) {
+            INFO("do_ubiattach got wrong target(%s)\n", target);
+            return -1;
+        }
+    }
+    else{
+        INFO("do_ubiattach got wrong target(%s)\n", target);
+        return -1;
+    }
+
+
+    libubi = libubi_open();
+    if (!libubi) {
+        INFO("do_ubiattach open fail");
+        return -1;
+    }
+
+    /*
+     * Make sure the kernel is fresh enough and this feature is supported.
+     */
+    err = ubi_get_info(libubi, &ubi_info);
+    if (err) {
+        INFO("cannot get UBI information\n");
+        goto out_libubi;
+    }
+
+    if (ubi_info.ctrl_major == -1) {
+        INFO("MTD attach/detach feature is not supported by your kernel");
+        goto out_libubi;
+    }
+
+    req.dev_num = UBI_DEV_NUM_AUTO;
+    req.mtd_num = n;
+    req.vid_hdr_offset = 0;
+    req.mtd_dev_node = NULL;
+
+    err = ubi_attach(libubi, DEFAULT_CTRL_DEV, &req);
+    if (err) {
+        INFO("cannot attach mtd%d", n);
+        goto out_libubi;
+    }
+
+    /* Print some information about the new UBI device */
+    /*
+    err = ubi_get_dev_info1(libubi, req.dev_num, &dev_info);
+    if (err) {
+        INFO("cannot get information about newly created UBI device");
+        goto out_libubi;
+    }
+
+    printf("UBI device number %d, total %d LEBs (", dev_info.dev_num, dev_info.total_lebs);
+    ubiutils_print_bytes(dev_info.total_bytes, 0);
+    printf("), available %d LEBs (", dev_info.avail_lebs);
+    ubiutils_print_bytes(dev_info.avail_bytes, 0);
+    printf("), LEB size ");
+    ubiutils_print_bytes(dev_info.leb_size, 1);
+    printf("\n");
+    */
+
+    libubi_close(libubi);
+    return 0;
+
+out_libubi:
+    libubi_close(libubi);
+    return -1;
+}
+
+int do_ubidetach(int argc, char **args)
+{
+    int err;
+    libubi_t libubi;
+    struct ubi_info ubi_info;
+
+    char *target;
+    int mtdn = -1, devn = -1;
+    char *dev = NULL;
+
+    target = args[1];
+    if (!strncmp(target, "mtd@", 4)) {
+        mtdn = mtd_name_to_number(target + 4);
+        if (mtdn < 0) {
+            INFO("do_ubiattach got wrong target(%s)\n", target);
+            return -1;
+        }
+    }
+    else if (!strncmp(target, "devn@", 5)){
+        devn = atoi(target + 5);
+        if (devn < 0) {
+            INFO("do_ubiattach got wrong target(%s)\n", target);
+            return -1;
+        }
+    }
+    else if (!strncmp(target, "dev@", 4)){
+        dev = target + 4;
+    }
+    else{
+        INFO("do_ubiattach got wrong target(%s)\n", target);
+        return -1;
+    }
+
+
+    libubi = libubi_open();
+    if (!libubi) {
+        INFO("cannot open libubi");
+        return -1;
+    }
+
+    /*
+     * Make sure the kernel is fresh enough and this feature is supported.
+     */
+    err = ubi_get_info(libubi, &ubi_info);
+    if (err) {
+        INFO("cannot get UBI information");
+        goto out_libubi;
+    }
+
+    if (ubi_info.ctrl_major == -1) {
+        INFO("MTD detach/detach feature is not supported by your kernel");
+        goto out_libubi;
+    }
+
+    if (devn != -1) {
+        err = ubi_remove_dev(libubi, DEFAULT_CTRL_DEV, devn);
+        if (err) {
+            INFO("cannot remove ubi%d", devn);
+            goto out_libubi;
+        }
+    }
+    else if (mtdn != -1) {
+        err = ubi_detach_mtd(libubi, DEFAULT_CTRL_DEV, mtdn);
+        if (err) {
+            INFO("cannot detach mtd%d", mtdn);
+            goto out_libubi;
+        }
+    }
+    else if (dev != NULL) {
+        err = ubi_detach(libubi, DEFAULT_CTRL_DEV, dev);
+        if (err) {
+            INFO("cannot detach \"%s\"", dev);
+            goto out_libubi;
+        }
+    }
+
+    libubi_close(libubi);
+    return 0;
+
+out_libubi:
+    libubi_close(libubi);
+    return -1;
 }
