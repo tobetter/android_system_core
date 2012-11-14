@@ -10,17 +10,40 @@ LOCAL_SRC_FILES:= \
 	property_service.c \
 	util.c \
 	parser.c \
+	bootenv.c \
 	logo.c \
 	keychords.c \
 	signal_handler.c \
 	init_parser.c \
 	ueventd.c \
 	ueventd_parser.c \
-	watchdogd.c
+	watchdogd.c \
+	ubi/ubiutils-common.c \
+	ubi/libubi.c
+
+LOCAL_C_INCLUDES += \
+	external/mtd-utils/include/ \
+	external/mtd-utils/ubi-utils/include
 
 ifeq ($(strip $(INIT_BOOTCHART)),true)
 LOCAL_SRC_FILES += bootchart.c
 LOCAL_CFLAGS    += -DBOOTCHART=1
+endif
+
+ifeq ($(strip $(UBOOTENV_SAVE_IN_NAND)),true)
+LOCAL_CFLAGS += -DUBOOTENV_SAVE_IN_NAND
+endif
+
+ifeq ($(strip $(INIT_BOOTARGSCHECK)),true)
+LOCAL_CFLAGS    += -DBOOT_ARGS_CHECK=1
+endif
+
+ifeq ($(BOARD_MATCH_LOGO_SIZE),true)
+  LOCAL_CFLAGS += -DMATCH_LOGO_SIZE
+endif
+
+ifeq ($(BOARD_TVMODE_ALL_SCALE),true)
+  LOCAL_CFLAGS += -DTVMODE_ALL_SCALE
 endif
 
 ifneq (,$(filter userdebug eng,$(TARGET_BUILD_VARIANT)))

@@ -127,6 +127,8 @@ LOCAL_SRC_FILES := $(commonSources) \
         qtaguid.c \
         uevent.c
 
+LOCAL_SRC_FILES += efuse_bch_8.c
+
 ifeq ($(TARGET_ARCH),arm)
 LOCAL_SRC_FILES += arch-arm/memset32.S
 else  # !arm

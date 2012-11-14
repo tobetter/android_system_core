@@ -96,6 +96,7 @@ int lookup_keyword(const char *s)
     case 'd':
         if (!strcmp(s, "isabled")) return K_disabled;
         if (!strcmp(s, "omainname")) return K_domainname;
+        if (!strcmp(s, "alvik_recache")) return K_dalvik_recache;
         break;
     case 'e':
         if (!strcmp(s, "xec")) return K_exec;
@@ -157,6 +158,8 @@ int lookup_keyword(const char *s)
         break;
     case 'u':
         if (!strcmp(s, "ser")) return K_user;
+        if (!strcmp(s, "biattach")) return K_ubiattach;
+        if (!strcmp(s, "bidetach")) return K_ubidetach;
         break;
     case 'w':
         if (!strcmp(s, "rite")) return K_write;
@@ -746,6 +749,9 @@ static void parse_line_service(struct parse_state *state, int nargs, char **args
         break;
     case K_critical:
         svc->flags |= SVC_CRITICAL;
+        break;
+    case K_dalvik_recache:
+        svc->flags |= SVC_DALVIK_RECACHE;
         break;
     case K_setenv: { /* name value */
         struct svcenvinfo *ei;

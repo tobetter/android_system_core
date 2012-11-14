@@ -29,5 +29,7 @@ extern const char* property_get(const char *name);
 extern int property_set(const char *name, const char *value);
 extern int properties_inited();
 int get_property_set_fd(void);
+extern int property_list(void (*propfn)(const char *key, const char *value, void *cookie),
+                  void *cookie);
 
 #endif	/* _INIT_PROPERTY_H */

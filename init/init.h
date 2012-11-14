@@ -72,6 +72,7 @@ struct svcenvinfo {
 #define SVC_RESET       0x40  /* Use when stopping a process, but not disabling
                                  so it can be restarted with its class */
 #define SVC_RC_DISABLED 0x80  /* Remember if the disabled flag was set in the rc script */
+#define SVC_DALVIK_RECACHE 0x100  /* rm dalvik cache file if this flag is set */
 
 #define NR_SVC_SUPP_GIDS 12    /* twelve supplementary groups */
 

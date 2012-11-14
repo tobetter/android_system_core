@@ -25,6 +25,7 @@
 #include <cutils/sockets.h>
 #include <cutils/android_reboot.h>
 #include <cutils/list.h>
+#include <dirent.h>
 
 #include "init.h"
 #include "util.h"
@@ -40,6 +41,7 @@ static void sigchld_handler(int s)
 
 #define CRITICAL_CRASH_THRESHOLD    4       /* if we crash >4 times ... */
 #define CRITICAL_CRASH_WINDOW       (4*60)  /* ... in 4 minutes, goto recovery*/
+#define RECACHE_ENABLE_PHASE      (5)  /* ... in 5 minutes, rm dalvik cache*/
 
 static int wait_for_one_process(int block)
 {
@@ -102,6 +104,13 @@ static int wait_for_one_process(int block)
         } else {
             svc->time_crashed = now;
             svc->nr_crashed = 1;
+        }
+    }else if (svc->flags & SVC_DALVIK_RECACHE) {
+        if (svc->time_started + RECACHE_ENABLE_PHASE >= now) {
+            ERROR("recacheabl process '%s' exited at(%lu) ,start(%lu)",
+                  svc->name, now, svc->time_started);
+            system("/system/xbin/busybox rm /data/dalvik-cache/*");
+            //android_reboot(ANDROID_RB_RESTART, 0, 0);
         }
     }
 

@@ -261,6 +261,84 @@ int mtd_name_to_number(const char *name)
     return -1;
 }
 
+#define MAX_INAND_PARTITIONS 16
+
+static struct {
+    char name[16];
+    int number;
+} inand_part_map[MAX_INAND_PARTITIONS];
+
+static int inand_part_count = -1;
+
+static int find_inand_partitions(void)
+{
+    int fd;
+    char buf[1024];
+    char *pinandbufp;
+    ssize_t pinandsize;
+    int r;
+
+    fd = open("/proc/inand", O_RDONLY);
+    if (fd < 0){
+	ERROR("open /proc/inand fail \n");
+        return -1;
+    }
+	INFO("open  /proc/inand success \n");
+    buf[sizeof(buf) - 1] = '\0';
+    pinandsize = read(fd, buf, sizeof(buf) - 1);
+    pinandbufp = buf;
+    while (pinandsize > 0) {
+        int inandnum, inandsize, inanderasesize;
+        char inandname[16];
+        inandname[0] = '\0';
+        inandnum = -1;
+        r = sscanf(pinandbufp, "inand%d: %x %x %15s",
+                   &inandnum, &inandsize, &inanderasesize, inandname);
+        if ((r == 4) && (inandname[0] == '"')) {
+            char *x = strchr(inandname + 1, '"');
+            if (x) {
+                *x = 0;
+            }
+            INFO("inand partition %d, %s\n", inandnum, inandname + 1);
+            if (inand_part_count < MAX_INAND_PARTITIONS) {
+                strcpy(inand_part_map[inand_part_count].name, inandname + 1);
+                inand_part_map[inand_part_count].number = inandnum;
+                inand_part_count++;
+            } else {
+                ERROR("too many inand artitions\n");
+            }
+        }
+        while (pinandsize > 0 && *pinandbufp != '\n') {
+            pinandbufp++;
+            pinandsize--;
+        }
+        if (pinandsize > 0) {
+            pinandbufp++;
+            pinandsize--;
+        }
+    }
+    close(fd);
+	return 0;
+}
+
+int inand_name_to_number(const char *name) 
+{
+    int n;
+    if (inand_part_count < 0) {
+        inand_part_count = 0;
+        if(find_inand_partitions()<0){
+		inand_part_count = -1;
+		return -1;
+        }
+    }
+    for (n = 0; n < inand_part_count; n++) {
+        if (!strcmp(name, inand_part_map[n].name)) {
+            return inand_part_map[n].number;
+        }
+    }
+    return -1;
+}
+
 /*
  * gettime() - returns the time in seconds of the system's monotonic clock or
  * zero on error.
@@ -416,9 +494,8 @@ void get_hardware_name(char *hardware, unsigned int *revision)
         if (x) {
             x += 2;
             n = 0;
-            while (*x && *x != '\n') {
-                if (!isspace(*x))
-                    hardware[n++] = tolower(*x);
+            while (*x && *x != '\n' && !isspace(*x)) {
+                hardware[n++] = tolower(*x);
                 x++;
                 if (n == 31) break;
             }

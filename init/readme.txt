@@ -63,6 +63,11 @@ critical
    This is a device-critical service. If it exits more than four times in
    four minutes, the device will reboot into recovery mode.
 
+dalvik_recache
+   Currently, this is designed for zygote only, zygote is crashed(cause by damaged dex 
+   files in /data/dalvik-cache/ ) at boot time, and this option is set, 
+   it will clean all dex files. Don`t use with critical
+
 disabled
    This service will not automatically start with its class.
    It must be explicitly started by name.
@@ -181,6 +186,12 @@ mount <type> <device> <dir> [ <mountoption> ]*
    <device> may be of the form mtd@name to specify a mtd block
    device by name.
    <mountoption>s include "ro", "rw", "remount", "noatime", ...
+
+ubiattach <location>
+   attach a mtd partion to ubi ctrl
+
+ubidetach <location>
+   detach a mtd partion from ubi ctrl
 
 setkey
    TBD

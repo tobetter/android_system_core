@@ -42,6 +42,7 @@
 #include <libgen.h>
 
 #include <cutils/list.h>
+#include <cutils/android_reboot.h>
 #include <cutils/sockets.h>
 #include <cutils/iosched_policy.h>
 #include <private/android_filesystem_config.h>
@@ -60,7 +61,7 @@
 #include "util.h"
 #include "ueventd.h"
 #include "watchdogd.h"
-
+#include "bootenv.h"
 #ifdef HAVE_SELINUX
 struct selabel_handle *sehandle;
 struct selabel_handle *sehandle_prop;
@@ -75,6 +76,7 @@ static int   bootchart_count;
 static char console[32];
 static char bootmode[32];
 static char hardware[32];
+static char resolution[32];
 static unsigned revision = 0;
 static char qemu[32];
 
@@ -101,6 +103,19 @@ static char *console_name = "/dev/console";
 static time_t process_needs_restart;
 
 static const char *ENV[32];
+static void set_recovery_flag(int turn_on) 
+{	
+	//update_bootenv_varible("ubootenv.var.bootcmd", 
+	//	turn_on ? "run recoveryboot" : "run nandboot");
+}
+
+static void enter_recovery_mode(int do_reboot) 
+{
+	set_recovery_flag(1);
+	if (do_reboot) {
+        android_reboot(ANDROID_RB_RESTART2, 0, "recovery");
+	}
+}
 
 /* add_environment - add "key=value" to the current environment */
 int add_environment(const char *key, const char *val)
@@ -341,7 +356,7 @@ void service_start(struct service *svc, const char *dynamic_args)
             }
         }
 #endif
-
+        NOTICE("'%s' (pid: %d) started\n", svc->name, getpid());
         if (!dynamic_args) {
             if (execve(svc->args[0], (char**) svc->args, (char**) ENV) < 0) {
                 ERROR("cannot execve('%s'): %s\n", svc->args[0], strerror(errno));
@@ -407,8 +422,11 @@ static void service_stop_or_reset(struct service *svc, int how)
     }
 
     if (svc->pid) {
-        NOTICE("service '%s' is being killed\n", svc->name);
-        kill(-svc->pid, SIGKILL);
+        NOTICE("service '%s' (pid: %d) is being killed\n", svc->name, svc->pid);
+        if (0 != kill(-svc->pid, SIGKILL)) {
+            NOTICE("killing '%s' (pid: %d) failed: %s. Try again.\n", svc->name, svc->pid, strerror(errno));
+            kill(svc->pid, SIGKILL);
+        }
         notify_service_state(svc->name, "stopping");
     } else {
         notify_service_state(svc->name, "stopped");
@@ -427,8 +445,17 @@ void service_stop(struct service *svc)
 
 void property_changed(const char *name, const char *value)
 {
-    if (property_triggers_enabled)
+    if (strcmp(name, "system.reboot.recovery") == 0
+		&& (strcmp(value, "true") == 0) ){
+		enter_recovery_mode(0);
+		return;
+    }
+    if (property_triggers_enabled) {
+	if (is_bootenv_varible(name)) {
+		update_bootenv_varible(name, value);
+	}
         queue_property_triggers(name, value);
+    }
 }
 
 static void restart_service_if_needed(struct service *svc)
@@ -584,8 +611,13 @@ static int console_init_action(int nargs, char **args)
     if (fd >= 0)
         have_console = 1;
     close(fd);
-
-    if( load_565rle_image(INIT_IMAGE_FILE) ) {
+    
+#ifndef MATCH_LOGO_SIZE
+    if( load_565rle_image(INIT_IMAGE_FILE) ) 
+#else
+    if( load_565rle_image_mbx(INIT_IMAGE_FILE,resolution) ) 
+#endif    	    	
+{
         fd = open("/dev/tty0", O_WRONLY);
         if (fd >= 0) {
             const char *msg;
@@ -643,7 +675,9 @@ static void import_kernel_nv(char *name, int for_emulator)
         const char *boot_prop_name = name + 12;
         char prop[PROP_NAME_MAX];
         int cnt;
-
+				if (!strcmp(name,"androidboot.resolution")) {
+            strlcpy(resolution, value, sizeof(resolution));
+        }
         cnt = snprintf(prop, sizeof(prop), "ro.boot.%s", boot_prop_name);
         if (cnt < PROP_NAME_MAX)
             property_set(prop, value);
@@ -771,6 +805,42 @@ static int bootchart_init_action(int nargs, char **args)
     return 0;
 }
 #endif
+
+static int ubootenv_init_action(int nargs, char **args)
+{
+    const char* pname = property_get("ro.mtd.ubootenv");
+    if (!pname || !(*pname)) {
+	pname = "ubootenv";
+	NOTICE("cannot find property:ro.mtd.ubootenv,  use '%s' as default.\n", pname);
+    }
+		
+    int id = mtd_name_to_number(pname);
+   if (id < 0)  {
+	    ERROR("Cannot find ubootenv device: %s\n", pname);
+    }
+   else {
+   	char ubootenv_partion[32];
+#ifdef UBOOTENV_SAVE_IN_NAND
+			sprintf(ubootenv_partion, "/dev/nand_env");
+#else
+        // Do NOT use mtdblock, it does not support erase.
+        sprintf(ubootenv_partion, "/dev/mtd/mtd%d", id);
+#endif
+	INFO("ubootenv device: %s\n", ubootenv_partion);
+       //allow app to set  recovery command
+        chmod("/cache", 0770);
+        chmod("/cache/recovery", 0770);
+
+	init_bootenv_varibles(ubootenv_partion);
+#if BOOT_ARGS_CHECK
+	check_boot_args();
+#endif
+       //clear recovery flag
+       set_recovery_flag(0);
+   }
+   return 0;
+}
+
 
 #ifdef HAVE_SELINUX
 static const struct selinux_opt seopts_prop[] = {
@@ -919,8 +989,13 @@ int main(int argc, char **argv)
     if (!is_charger)
         property_load_boot_defaults();
 
-    INFO("reading config file\n");
-    init_parse_config_file("/init.rc");
+    if (!strcmp(bootmode,"factory"))
+       init_parse_config_file("/init.factorytest.rc");
+    else if (!strcmp(bootmode,"factory2"))
+       init_parse_config_file("/init.factorytest2.rc");
+    else
+       init_parse_config_file("/init.rc");
+
 
     action_for_each_trigger("early-init", action_add_queue_tail);
 
@@ -947,6 +1022,7 @@ int main(int argc, char **argv)
         action_for_each_trigger("charger", action_add_queue_tail);
     } else {
         action_for_each_trigger("early-boot", action_add_queue_tail);
+        queue_builtin_action(ubootenv_init_action, "ubootenv_init");
         action_for_each_trigger("boot", action_add_queue_tail);
     }
 

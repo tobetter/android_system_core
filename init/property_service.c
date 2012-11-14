@@ -54,7 +54,7 @@
 
 static int persistent_properties_loaded = 0;
 static int property_area_inited = 0;
-
+static char uboot_var_prefix[32] = {0};
 static int property_set_fd = -1;
 
 /* White list of permissions for setting property services. */
@@ -94,6 +94,13 @@ struct {
     { "persist.security.", AID_SYSTEM,   0 },
     { "persist.service.bdroid.", AID_BLUETOOTH,   0 },
     { "selinux."         , AID_SYSTEM,   0 },
+    { "persist.tv.",       AID_SYSTEM,   0 },
+    { "tv.",               AID_SYSTEM,   0 },
+    { uboot_var_prefix,    AID_SYSTEM,   0 },
+    { "camera.",           AID_MEDIA,    0 },
+    { "rw.vout.",          AID_MEDIA,    0 },
+    { "vplayer.",         AID_SYSTEM,    0 },
+    { "mbx.",             AID_SYSTEM,    0 },
     { NULL, 0, 0 }
 };
 
@@ -159,7 +166,7 @@ out:
 
 #define PA_COUNT_MAX  247
 #define PA_INFO_START 1024
-#define PA_SIZE       32768
+#define PA_SIZE       ((sizeof(prop_info) * (PA_COUNT_MAX)) + (PA_INFO_START))
 
 static workspace pa_workspace;
 static prop_info *pa_info_array;
@@ -283,6 +290,9 @@ static int check_control_perms(const char *name, unsigned int uid, unsigned int 
 static int check_perms(const char *name, unsigned int uid, unsigned int gid, char *sctx)
 {
     int i;
+
+    if (strcmp(name, "system.reboot.recovery") == 0)
+             return  1;
     if(!strncmp(name, "ro.", 3))
         name +=3;
 
@@ -371,6 +381,12 @@ int property_set(const char *name, const char *value)
         memcpy(pi->name, name, namelen + 1);
         memcpy(pi->value, value, valuelen + 1);
 
+	if (strcmp(name, "ro.ubootenv.varible.prefix") == 0) {
+		int vlen = (valuelen < 30) ? valuelen : 30;
+		memcpy(uboot_var_prefix, value, vlen);
+		uboot_var_prefix[vlen] = '.';
+	}
+
         pa->toc[pa->count] =
             (namelen << 24) | (((unsigned) pi) - ((unsigned) pa));
 
@@ -403,6 +419,21 @@ int property_set(const char *name, const char *value)
 #endif
     }
     property_changed(name, value);
+    return 0;
+}
+
+int property_list(void (*propfn)(const char *key, const char *value, void *cookie),
+                  void *cookie)
+{
+    char name[PROP_NAME_MAX];
+    char value[PROP_VALUE_MAX];
+    const prop_info *pi;
+    unsigned n;
+
+    for(n = 0; (pi = __system_property_find_nth(n)); n++) {
+        __system_property_read(pi, name, value);
+        propfn(name, value, cookie);
+    }
     return 0;
 }
 
