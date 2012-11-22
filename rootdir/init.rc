@@ -385,12 +385,12 @@ on property:selinux.reload_policy=1
 service console /system/bin/sh
     class core
     console
-    disabled
+    #disabled
     #user shell
     #group log
 
-on property:ro.debuggable=1
-    start console
+#on property:ro.debuggable=1
+#    start console
 
 # adbd is controlled via property triggers in init.<platform>.usb.rc
 service adbd /sbin/adbd
