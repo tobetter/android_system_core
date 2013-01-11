@@ -22,6 +22,7 @@
 #include <fcntl.h>
 #include <sys/mount.h>
 #include <sys/stat.h>
+#include <sys/types.h>
 #include <sys/statfs.h>
 #include <sys/uio.h>
 #include <dirent.h>
@@ -86,6 +87,7 @@
 /* Pseudo-error constant used to indicate that no fuse status is needed
  * or that a reply has already been written. */
 #define NO_STATUS 1
+#define DEFAULT_FILE_SIZE  0x3200000
 
 struct handle {
     int fd;
@@ -805,6 +807,7 @@ static int handle_open(struct fuse* fuse, struct fuse_handler* handler,
     char path[PATH_MAX];
     struct fuse_open_out out;
     struct handle *h;
+	struct stat f_stat;
 
     pthread_mutex_lock(&fuse->lock);
     node = lookup_node_and_path_by_id_locked(fuse, hdr->nodeid, path, sizeof(path));
@@ -826,6 +829,10 @@ static int handle_open(struct fuse* fuse, struct fuse_handler* handler,
         return -errno;
     }
     out.fh = ptr_to_id(h);
+	stat(path, &f_stat);
+	if(f_stat.st_size < DEFAULT_FILE_SIZE)
+		out.open_flags = FOPEN_KEEP_CACHE;
+	else
     out.open_flags = 0;
     out.padding = 0;
     fuse_reply(fuse, hdr->unique, &out, sizeof(out));
