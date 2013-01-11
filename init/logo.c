@@ -189,12 +189,14 @@ int load_565rle_image_mbx(char *fn,char* resolution)
 {
 #ifdef TVMODE_ALL_SCALE
 
+    int result = 0;
+
     struct FB fb;
     struct stat s;
     unsigned short *data, *ptr;
     unsigned count, max;
     int fd;
-		int fd_vaxis, fd_daxis, fd_faxis, fd_freescale, fdw_reg, fd_blank, fd_ppscale, fd_ppscale_rect;
+		int fd_vaxis, fd_daxis, fd_faxis, fd_freescale,  fd_blank, fd_ppscale, fd_ppscale_rect;
 		
 		if((fd_vaxis = open("/sys/class/video/axis", O_RDWR)) < 0) {
 				ERROR("open /sys/class/video/axis fail.");
@@ -208,24 +210,22 @@ int load_565rle_image_mbx(char *fn,char* resolution)
 		if((fd_freescale = open("/sys/class/graphics/fb0/free_scale", O_RDWR)) < 0) {
 				ERROR("open /sys/class/graphics/fb0/free_scale fail.");
 		}
-		if((fdw_reg = open("/sys/class/display/wr_reg", O_RDWR)) < 0) {
-				ERROR("open /sys/class/display/wr_reg fail.");
-		}
+
 		if((fd_blank = open("/sys/class/graphics/fb0/blank", O_RDWR)) < 0) {
 				ERROR("open /sys/class/graphics/fb0/blank fail.");
 		}
+	
 		if((fd_ppscale = open("/sys/class/ppmgr/ppscaler", O_RDWR)) < 0) {
 				ERROR("open /sys/class/ppmgr/ppscaler fail.");
 		}
 		if((fd_ppscale_rect = open("/sys/class/ppmgr/ppscaler_rect", O_RDWR)) < 0) {
 				ERROR("open /sys/class/ppmgr/ppscaler_rect fail.");
 		}
-		
+
 	  write(fd_blank, "1", strlen("1"));
 	  write(fd_daxis, "0 0 1280 720 0 0 18 18", strlen("0 0 1280 720 0 0 18 18"));
 	  write(fd_faxis, "0 0 1279 719", strlen("0 0 1279 719"));
 	  write(fd_vaxis, "0 0 1279 719", strlen("0 0 1279 719"));
-	  //write(fdw_reg, "m 0x1d26 0x00b1", strlen("m 0x1d26 0x00b1"));
 		if((!strncmp(resolution, "480i", 4)) || (!strncmp(resolution, "480p", 4)))
 		{
 	  	write(fd_ppscale_rect, "0 0 719 479 0", strlen("0 0 719 479 0"));
@@ -302,26 +302,81 @@ int load_565rle_image_mbx(char *fn,char* resolution)
         }
     }
 
+	 
     munmap(data, s.st_size);
     fb_update(&fb);
     fb_close(&fb);
     close(fd);
     unlink(fn);
-	  write(fd_freescale, "1", strlen("1"));
+    write(fd_freescale, "1", strlen("1"));
 	  write(fd_ppscale, "1", strlen("1"));
-	  write(fd_blank, "0", strlen("0"));
+	  write(fd_blank, "0", strlen("0"));    
+    close(fd_vaxis);
+    close(fd_daxis);
+    close(fd_faxis);
+    close(fd_freescale);
+    close(fd_blank);
+    close(fd_ppscale);
+    close(fd_ppscale_rect);
     return 0;
 
 fail_unmap_data:
     munmap(data, s.st_size);    
 fail_close_file:
     close(fd);
+
 fail_restore_text:
-    vt_set_mode(0);
-write(fd_freescale, "1", strlen("1"));
-write(fd_ppscale, "1", strlen("1"));
-write(fd_blank, "0", strlen("0"));
-    return -1;
+    memset(&fb, 0, sizeof(struct FB));    
+
+    result = fb_open(&fb);
+    ERROR("%s result is: %d\n", __FUNCTION__, result);
+
+    if(result != 0)
+    {
+	vt_set_mode(0);
+	result = -1;
+    }
+    else
+    {
+	if (fb_bpp(&fb) == 16) 
+    	{
+		unsigned short* p = (unsigned short*)fb.bits;
+		unsigned int index = 0;
+
+		for(index = 0; index <  fb_size(&fb)  / 2; index++)
+		{
+			*p = 0x0000;
+			p++;
+		}
+    	} 
+    	else if (fb_bpp(&fb) == 32)
+    	{
+    		unsigned int* p = (unsigned int*)fb.bits;
+    		unsigned int index = 0;
+
+    		for(index = 0; index <  fb_size(&fb)  / 4; index++)
+    		{
+    			*p = 0x00000000;
+    			p++;
+    		}
+    	}
+
+	result = 0;
+    }	
+    fb_update(&fb);
+    fb_close(&fb);
+    write(fd_freescale, "1", strlen("1"));
+    write(fd_ppscale, "1", strlen("1"));
+    write(fd_blank, "0", strlen("0"));
+    close(fd_vaxis);
+    close(fd_daxis);
+    close(fd_faxis);
+    close(fd_freescale);
+    close(fd_blank);
+    close(fd_ppscale);
+    close(fd_ppscale_rect);
+
+    return result;
 
 #else  
   
