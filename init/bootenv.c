@@ -26,6 +26,20 @@ char PROFIX_UBOOTENV_VAR[32]={0};
 #define SPI_PARTITIONS_SIZE   0x8000
 #define ENV_SIZE (SPI_PARTITIONS_SIZE - sizeof(uint32_t))
 
+struct mtd_info_user {
+        __u8 type;
+        __u32 flags;
+        __u32 size;      // Total size of the MTD
+        __u32 erasesize;
+        __u32 writesize;
+        __u32 oobsize;   // Amount of OOB data per block (e.g. 16)
+        /* The below two fields are obsolete and broken, do not use them
+         * (TODO: remove at some point) */
+        __u32 ecctype;
+        __u32 eccsize;
+};
+#define MEMGETINFO              _IOR('M', 1, struct mtd_info_user)
+
 struct erase_info_user {
 	uint32_t start;
 	uint32_t length;
@@ -382,6 +396,8 @@ int save_bootenv(char * dev)
 	int fd;
 	int err;
 	struct erase_info_user erase;
+	struct mtd_info_user info;
+	unsigned char *data;
 	
 	env_revert_attribute(&env_attribute_header);
 	env_data.crc = crc32(0, env_data.data, ENV_SIZE);
@@ -394,8 +410,38 @@ int save_bootenv(char * dev)
 		return -1;
 	}
 
+	memset(&info, 0, sizeof(info));
+	err = ioctl(fd, MEMGETINFO, &info);
+	if(err < 0)
+	{
+		printf("Get MTD info error\n");
+		close(fd);
+		return -4;
+	}
 	erase.start = 0;
-	erase.length = SPI_PARTITIONS_SIZE;
+	if(info.erasesize > SPI_PARTITIONS_SIZE)
+	{
+		data = (unsigned char*)malloc(info.erasesize);
+		if(data == NULL)
+		{
+			printf("Out of memory!!!\n");
+			close(fd);
+			return -5;
+		}
+		memset(data, 0, info.erasesize);
+		err = read(fd, (void*)data, info.erasesize);
+		if(err != info.erasesize)
+		{
+			printf("Read access failed !!!\n");
+			free(data);
+			close(fd);
+			return -6;
+		}
+		memcpy(data, (void *)&env_data, SPI_PARTITIONS_SIZE);
+		erase.length = info.erasesize;
+	}
+	else
+		erase.length = SPI_PARTITIONS_SIZE;
 	#ifndef UBOOTENV_SAVE_IN_NAND
 	err = memerase (fd,&erase);
 	if (err < 0)
@@ -405,7 +451,14 @@ int save_bootenv(char * dev)
 		return  -2;
 	}
 	#endif
- 	err = write(fd ,(void *)&env_data, SPI_PARTITIONS_SIZE);	
+	if(info.erasesize > SPI_PARTITIONS_SIZE)
+	{
+		lseek(fd, 0L, SEEK_SET);
+ 		err = write(fd , data, info.erasesize);
+		free(data);
+	}
+	else
+ 		err = write(fd ,(void *)&env_data, SPI_PARTITIONS_SIZE);
 	close(fd);
 	if (err < 0)
 	{ 
