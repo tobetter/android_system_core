@@ -430,7 +430,9 @@ static inline bool audio_is_bluetooth_sco_device(audio_devices_t device)
 
 static inline bool audio_is_usb_device(audio_devices_t device)
 {
-    if ((popcount(device) == 1) && (device & AUDIO_DEVICE_OUT_ALL_USB))
+    device &= ~AUDIO_DEVICE_BIT_IN;
+    if ((popcount(device) == 1) && (device & (AUDIO_DEVICE_OUT_ALL_USB |
+		             AUDIO_DEVICE_IN_USB_DEVICE )))
         return true;
     else
         return false;
