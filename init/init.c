@@ -808,36 +808,37 @@ static int bootchart_init_action(int nargs, char **args)
 
 static int ubootenv_init_action(int nargs, char **args)
 {
+    char ubootenv_partion[32];
+#ifdef UBOOTENV_SAVE_IN_NAND
+    sprintf(ubootenv_partion, "/dev/nand_env");
+#else
     const char* pname = property_get("ro.mtd.ubootenv");
     if (!pname || !(*pname)) {
-	pname = "ubootenv";
-	NOTICE("cannot find property:ro.mtd.ubootenv,  use '%s' as default.\n", pname);
+        pname = "ubootenv";
+        NOTICE("cannot find property:ro.mtd.ubootenv,  use '%s' as default.\n", pname);
     }
 		
     int id = mtd_name_to_number(pname);
-   if (id < 0)  {
-	    ERROR("Cannot find ubootenv device: %s\n", pname);
-    }
-   else {
-   	char ubootenv_partion[32];
-#ifdef UBOOTENV_SAVE_IN_NAND
-			sprintf(ubootenv_partion, "/dev/nand_env");
-#else
+    if (id < 0){
+        ERROR("Cannot find ubootenv device: %s\n", pname);
+    }else {
         // Do NOT use mtdblock, it does not support erase.
         sprintf(ubootenv_partion, "/dev/mtd/mtd%d", id);
-#endif
-	INFO("ubootenv device: %s\n", ubootenv_partion);
-       //allow app to set  recovery command
+#endif    
+        INFO("ubootenv device: %s\n", ubootenv_partion);
+        //allow app to set  recovery command
         chmod("/cache", 0770);
         chmod("/cache/recovery", 0770);
 
-	init_bootenv_varibles(ubootenv_partion);
+      	init_bootenv_varibles(ubootenv_partion);
 #if BOOT_ARGS_CHECK
-	check_boot_args();
+        check_boot_args();
 #endif
-       //clear recovery flag
-       set_recovery_flag(0);
+        //clear recovery flag
+        set_recovery_flag(0);
+#ifndef UBOOTENV_SAVE_IN_NAND
    }
+#endif
    return 0;
 }
 

@@ -26,6 +26,7 @@ char PROFIX_UBOOTENV_VAR[32]={0};
 #define SPI_PARTITIONS_SIZE   0x8000
 #define ENV_SIZE (SPI_PARTITIONS_SIZE - sizeof(uint32_t))
 
+#ifndef UBOOTENV_SAVE_IN_NAND
 struct mtd_info_user {
         __u8 type;
         __u32 flags;
@@ -39,6 +40,7 @@ struct mtd_info_user {
         __u32 eccsize;
 };
 #define MEMGETINFO              _IOR('M', 1, struct mtd_info_user)
+#endif
 
 struct erase_info_user {
 	uint32_t start;
@@ -396,9 +398,10 @@ int save_bootenv(char * dev)
 	int fd;
 	int err;
 	struct erase_info_user erase;
+#ifndef UBOOTENV_SAVE_IN_NAND
 	struct mtd_info_user info;
 	unsigned char *data;
-	
+#endif	
 	env_revert_attribute(&env_attribute_header);
 	env_data.crc = crc32(0, env_data.data, ENV_SIZE);
 
@@ -409,7 +412,11 @@ int save_bootenv(char * dev)
 		printf("----open devices error\n");
 		return -1;
 	}
-
+#ifdef UBOOTENV_SAVE_IN_NAND
+	erase.start = 0;
+	erase.length = SPI_PARTITIONS_SIZE;
+	err = write(fd ,(void *)&env_data, SPI_PARTITIONS_SIZE); 
+#else
 	memset(&info, 0, sizeof(info));
 	err = ioctl(fd, MEMGETINFO, &info);
 	if(err < 0)
@@ -418,6 +425,7 @@ int save_bootenv(char * dev)
 		close(fd);
 		return -4;
 	}
+
 	erase.start = 0;
 	if(info.erasesize > SPI_PARTITIONS_SIZE)
 	{
@@ -442,7 +450,7 @@ int save_bootenv(char * dev)
 	}
 	else
 		erase.length = SPI_PARTITIONS_SIZE;
-	#ifndef UBOOTENV_SAVE_IN_NAND
+
 	err = memerase (fd,&erase);
 	if (err < 0)
 	{
@@ -450,7 +458,7 @@ int save_bootenv(char * dev)
 	        close(fd);
 		return  -2;
 	}
-	#endif
+
 	if(info.erasesize > SPI_PARTITIONS_SIZE)
 	{
 		lseek(fd, 0L, SEEK_SET);
@@ -459,6 +467,7 @@ int save_bootenv(char * dev)
 	}
 	else
  		err = write(fd ,(void *)&env_data, SPI_PARTITIONS_SIZE);
+#endif
 	close(fd);
 	if (err < 0)
 	{ 
