@@ -442,7 +442,7 @@ int wait_for_file(const char *filename, int timeout)
     int ret = -1;
 
     while (gettime() < timeout_time && ((ret = stat(filename, &info)) < 0))
-        usleep(10000);
+        usleep(1000000);
 
     return ret;
 }
