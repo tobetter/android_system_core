@@ -101,6 +101,7 @@ int lookup_keyword(const char *s)
     case 'e':
         if (!strcmp(s, "xec")) return K_exec;
         if (!strcmp(s, "xport")) return K_export;
+        if (!strcmp(s, "2fsck")) return K_e2fsck;
         break;
     case 'g':
         if (!strcmp(s, "roup")) return K_group;
@@ -330,6 +331,7 @@ void parse_new_section(struct parse_state *state, int kw,
         }
         break;
     case K_on:
+    case K_e2fsck:
         state->context = parse_action(state, nargs, args);
         if (state->context) {
             state->parse_line = parse_line_action;

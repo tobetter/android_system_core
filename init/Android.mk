@@ -62,7 +62,15 @@ LOCAL_FORCE_STATIC_EXECUTABLE := true
 LOCAL_MODULE_PATH := $(TARGET_ROOT_OUT)
 LOCAL_UNSTRIPPED_PATH := $(TARGET_ROOT_OUT_UNSTRIPPED)
 
-LOCAL_STATIC_LIBRARIES := libfs_mgr libcutils libc
+LOCAL_STATIC_LIBRARIES := libfs_mgr libcutils libc \
+	libe2fsck_static \
+        libext2fs \
+        libext2_blkid \
+        libext2_uuid \
+        libext2_profile \
+        libext2_com_err \
+        libext2_e2p 
+
 
 ifeq ($(HAVE_SELINUX),true)
 LOCAL_STATIC_LIBRARIES += libselinux

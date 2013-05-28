@@ -56,6 +56,7 @@
 void add_environment(const char *name, const char *value);
 
 extern int init_module(void *, unsigned long, const char *);
+extern int e2fsck_main(int argc, char *argv[]);
 
 static int write_file(const char *path, const char *value)
 {
@@ -992,4 +993,24 @@ int do_ubidetach(int argc, char **args)
 out_libubi:
     libubi_close(libubi);
     return -1;
+}
+int do_e2fsck(int nargs, char **args) {
+
+    if (nargs == 3) {
+
+
+	
+        ERROR("Before e2fsck_main...\n");
+
+        e2fsck_main(nargs, args);
+
+        ERROR("After e2fsck_main...\n");
+
+    } else {
+        ERROR("e2fsck bad args %d.", nargs);
+    }
+	fprintf(fp, "%d", 1);
+	fclose(fp);
+#endif
+    return 0;
 }
