@@ -997,9 +997,6 @@ out_libubi:
 int do_e2fsck(int nargs, char **args) {
 
     if (nargs == 3) {
-
-
-	
         ERROR("Before e2fsck_main...\n");
 
         e2fsck_main(nargs, args);
@@ -1009,8 +1006,6 @@ int do_e2fsck(int nargs, char **args) {
     } else {
         ERROR("e2fsck bad args %d.", nargs);
     }
-	fprintf(fp, "%d", 1);
-	fclose(fp);
-#endif
+
     return 0;
 }
