@@ -226,12 +226,12 @@ int load_565rle_image_mbx(char *fn,char* resolution)
 	  write(fd_daxis, "0 0 1280 720 0 0 18 18", strlen("0 0 1280 720 0 0 18 18"));
 	  write(fd_faxis, "0 0 1279 719", strlen("0 0 1279 719"));
 	  write(fd_vaxis, "0 0 1279 719", strlen("0 0 1279 719"));
-		if((!strncmp(resolution, "480i", 4)) || (!strncmp(resolution, "480p", 4)))
+		if((!strncmp(resolution, "480i", 4)) || (!strncmp(resolution, "480p", 4)) || (!strncmp(resolution, "480cvbs", 7)))
 		{
 	  	write(fd_ppscale_rect, "0 0 719 479 0", strlen("0 0 719 479 0"));
 			//ERROR("set video axis: 0 0 719 479");
 		}
-		else if((!strncmp(resolution, "576i", 4)) || (!strncmp(resolution, "576p", 4)))
+		else if((!strncmp(resolution, "576i", 4)) || (!strncmp(resolution, "576p", 4))||(!strncmp(resolution, "576cvbs", 7)))
 		{
 	  	write(fd_ppscale_rect, "0 0 719 575 0", strlen("0 0 719 575 0"));
 			//ERROR("set video axis: 0 0 719 575");
