@@ -450,10 +450,12 @@ void property_changed(const char *name, const char *value)
 		enter_recovery_mode(0);
 		return;
     }
+    INFO("property_changed: property_triggers_enabled == %d \n",property_triggers_enabled);
     if (property_triggers_enabled) {
-	if (is_bootenv_varible(name)) {
-		update_bootenv_varible(name, value);
-	}
+        INFO("property_changed: name [%s] value [%s] \n",name,value);
+    	if (is_bootenv_varible(name)) {
+    		update_bootenv_varible(name, value);
+    	}
         queue_property_triggers(name, value);
     }
 }
@@ -808,38 +810,17 @@ static int bootchart_init_action(int nargs, char **args)
 
 static int ubootenv_init_action(int nargs, char **args)
 {
-    char ubootenv_partion[32];
-#ifdef UBOOTENV_SAVE_IN_NAND
-    sprintf(ubootenv_partion, "/dev/nand_env");
-#else
-    const char* pname = property_get("ro.mtd.ubootenv");
-    if (!pname || !(*pname)) {
-        pname = "ubootenv";
-        NOTICE("cannot find property:ro.mtd.ubootenv,  use '%s' as default.\n", pname);
-    }
-		
-    int id = mtd_name_to_number(pname);
-    if (id < 0){
-        ERROR("Cannot find ubootenv device: %s\n", pname);
-    }else {
-        // Do NOT use mtdblock, it does not support erase.
-        sprintf(ubootenv_partion, "/dev/mtd/mtd%d", id);
-#endif    
-        INFO("ubootenv device: %s\n", ubootenv_partion);
-        //allow app to set  recovery command
-        chmod("/cache", 0770);
-        chmod("/cache/recovery", 0770);
+    chmod("/cache", 0770);
+    chmod("/cache/recovery", 0770);
 
-      	init_bootenv_varibles(ubootenv_partion);
-#if BOOT_ARGS_CHECK
-        check_boot_args();
-#endif
-        //clear recovery flag
-        set_recovery_flag(0);
-#ifndef UBOOTENV_SAVE_IN_NAND
-   }
-#endif
-   return 0;
+    init_bootenv_varibles();
+    #if BOOT_ARGS_CHECK
+    check_boot_args();
+    #endif
+    //clear recovery flag
+    set_recovery_flag(0);
+
+    return 0;
 }
 
 
@@ -1018,6 +999,8 @@ int main(int argc, char **argv)
     queue_builtin_action(property_service_init_action, "property_service_init");
     queue_builtin_action(signal_init_action, "signal_init");
     queue_builtin_action(check_startup_action, "check_startup");
+    /* run all property triggers based on current state of the properties */
+    queue_builtin_action(queue_property_triggers_action, "queue_property_triggers");
 
     if (is_charger) {
         action_for_each_trigger("charger", action_add_queue_tail);
@@ -1026,9 +1009,6 @@ int main(int argc, char **argv)
         queue_builtin_action(ubootenv_init_action, "ubootenv_init");
         action_for_each_trigger("boot", action_add_queue_tail);
     }
-
-        /* run all property triggers based on current state of the properties */
-    queue_builtin_action(queue_property_triggers_action, "queue_property_triggers");
 
 
 #if BOOTCHART
