@@ -460,10 +460,23 @@ int do_mount(int nargs, char **args)
     } else {
         if (wait)
             wait_for_file(source, COMMAND_RETRY_TIMEOUT);
-        if (mount(source, target, system, flags, options) < 0) {
-            return -1;
+
+        if (!strncmp(source, "inand@", 6)) {
+            do{
+                n = inand_name_to_number(source + 6);
+                INFO("inand_name_to_number: %d\n" , n);
+                usleep(200000);
+                //sched_yield();
+            }while(n < 0);
+
+            sprintf(tmp, "/dev/block/cardblkinand%d", n);
+        }else{
+            strcpy(tmp,  source);
         }
 
+        if (mount(tmp, target, system, flags, options) < 0) {
+            return -1;
+        }
     }
 
 exit_success:
