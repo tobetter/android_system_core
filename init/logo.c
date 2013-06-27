@@ -185,7 +185,7 @@ fail_restore_text:
     return -1;
 }
 #else
-int load_565rle_image_mbx(char *fn,char* resolution)
+int load_565rle_image_mbx(char *fn,char* resolution,char* hdmimode,char* cvbsmode)
 {
 #ifdef TVMODE_ALL_SCALE
 
@@ -195,8 +195,9 @@ int load_565rle_image_mbx(char *fn,char* resolution)
     struct stat s;
     unsigned short *data, *ptr;
     unsigned count, max;
+    int hpd_state_value;
     int fd;
-		int fd_vaxis, fd_daxis, fd_faxis, fd_freescale,  fd_blank, fd_ppscale, fd_ppscale_rect;
+		int fd_vaxis, fd_daxis, fd_faxis, fd_freescale,  fd_blank, fd_ppscale, fd_ppscale_rect, fd_hpd_state;
 		
 		if((fd_vaxis = open("/sys/class/video/axis", O_RDWR)) < 0) {
 				ERROR("open /sys/class/video/axis fail.");
@@ -221,7 +222,26 @@ int load_565rle_image_mbx(char *fn,char* resolution)
 		if((fd_ppscale_rect = open("/sys/class/ppmgr/ppscaler_rect", O_RDWR)) < 0) {
 				ERROR("open /sys/class/ppmgr/ppscaler_rect fail.");
 		}
+		if((fd_hpd_state = open("/sys/class/amhdmitx/amhdmitx0/hpd_state", O_RDWR)) < 0) {
+				ERROR("open /sys/class/amhdmitx/amhdmitx0/hpd_state.");
+		}
 
+		#ifdef HAS_HDMIONLY_FUNCTION
+			read(fd_hpd_state,&hpd_state_value, 2);
+			ERROR("hdmi hpd_status is :%d\n",hpd_state_value);
+			if(hpd_state_value==49)//ASCII 49 =1; hdmi connected
+				resolution = hdmimode;
+			else
+			{
+				if((strncmp(cvbsmode, "480cvbs", 7)!=0) && (strncmp(cvbsmode, "576cvbs", 7)!=0))
+				{ 
+					strlcpy(cvbsmode, "480cvbs", sizeof("480cvbs"));
+					ERROR("cvbsmode is null, use default value:%s\n",cvbsmode);
+				}
+				resolution = cvbsmode;
+			}
+              
+		#endif      
 	  write(fd_blank, "1", strlen("1"));
 	  write(fd_daxis, "0 0 1280 720 0 0 18 18", strlen("0 0 1280 720 0 0 18 18"));
 	  write(fd_faxis, "0 0 1279 719", strlen("0 0 1279 719"));
@@ -318,6 +338,7 @@ int load_565rle_image_mbx(char *fn,char* resolution)
     close(fd_blank);
     close(fd_ppscale);
     close(fd_ppscale_rect);
+    close(fd_hpd_state);
     return 0;
 
 fail_unmap_data:

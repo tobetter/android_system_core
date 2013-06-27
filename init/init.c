@@ -77,6 +77,8 @@ static char console[32];
 static char bootmode[32];
 static char hardware[32];
 static char resolution[32];
+static char hdmimode[32];
+static char cvbsmode[32];
 static unsigned revision = 0;
 static char qemu[32];
 
@@ -617,7 +619,7 @@ static int console_init_action(int nargs, char **args)
 #ifndef MATCH_LOGO_SIZE
     if( load_565rle_image(INIT_IMAGE_FILE) ) 
 #else
-    if( load_565rle_image_mbx(INIT_IMAGE_FILE,resolution) ) 
+    if( load_565rle_image_mbx(INIT_IMAGE_FILE,resolution,hdmimode,cvbsmode) ) 
 #endif    	    	
 {
         fd = open("/dev/tty0", O_WRONLY);
@@ -677,13 +679,17 @@ static void import_kernel_nv(char *name, int for_emulator)
         const char *boot_prop_name = name + 12;
         char prop[PROP_NAME_MAX];
         int cnt;
-				if (!strcmp(name,"androidboot.resolution")) {
+        if (!strcmp(name,"androidboot.resolution")) {
             strlcpy(resolution, value, sizeof(resolution));
         }
         cnt = snprintf(prop, sizeof(prop), "ro.boot.%s", boot_prop_name);
         if (cnt < PROP_NAME_MAX)
             property_set(prop, value);
-    }
+    } else if (!strcmp(name,"hdmimode")) {
+        strlcpy(hdmimode, value, sizeof(hdmimode));
+    } else if (!strcmp(name,"cvbsmode")) {
+        strlcpy(cvbsmode, value, sizeof(cvbsmode));
+    } 
 }
 
 static void export_kernel_boot_props(void)
