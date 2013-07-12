@@ -94,6 +94,7 @@ struct {
     { "persist.security.", AID_SYSTEM,   0 },
     { "persist.service.bdroid.", AID_BLUETOOTH,   0 },
     { "selinux."         , AID_SYSTEM,   0 },
+    { "ds1.audio.multichannel.", AID_MEDIA,   0 },
 #ifdef DOLBY_UDC_MULTICHANNEL
     { "dolby.audio",      AID_MEDIA,    0 },
 #endif // DOLBY_UDC_MULTICHANNEL
