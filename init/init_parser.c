@@ -79,6 +79,9 @@ struct {
 int lookup_keyword(const char *s)
 {
     switch (*s++) {
+    case 'b':
+        if (!strcmp(s, "ootcomplete")) return K_bootcomplete;
+        break;
     case 'c':
     if (!strcmp(s, "opy")) return K_copy;
         if (!strcmp(s, "apability")) return K_capability;

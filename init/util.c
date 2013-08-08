@@ -399,7 +399,7 @@ void sanitize(char *s)
         s++;
     *s = 0;
 }
-void make_link(const char *oldpath, const char *newpath)
+void makelink(const char *oldpath, const char *newpath)
 {
     int ret;
     char buf[256];
@@ -423,7 +423,7 @@ void make_link(const char *oldpath, const char *newpath)
         ERROR("Failed to symlink %s to %s: %s (%d)\n", oldpath, newpath, strerror(errno), errno);
 }
 
-void remove_link(const char *oldpath, const char *newpath)
+void removelink(const char *oldpath, const char *newpath)
 {
     char path[256];
     ssize_t ret;

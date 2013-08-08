@@ -476,14 +476,14 @@ static void handle_device(const char *action, const char *devpath,
         make_device(devpath, path, block, major, minor);
         if (links) {
             for (i = 0; links[i]; i++)
-                make_link(devpath, links[i]);
+                makelink(devpath, links[i]);
         }
     }
 
     if(!strcmp(action, "remove")) {
         if (links) {
             for (i = 0; links[i]; i++)
-                remove_link(devpath, links[i]);
+                removelink(devpath, links[i]);
         }
         unlink(devpath);
     }

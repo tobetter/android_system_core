@@ -706,11 +706,12 @@ static void export_kernel_boot_props(void)
         { "ro.boot.mode", "ro.bootmode", "unknown", },
         { "ro.boot.baseband", "ro.baseband", "unknown", },
         { "ro.boot.bootloader", "ro.bootloader", "unknown", },
+        { "ro.boot.firstboot", "ro.firstboot", "0"},
     };
 
     for (i = 0; i < ARRAY_SIZE(prop_map); i++) {
         pval = property_get(prop_map[i].src_prop);
-        property_set(prop_map[i].dest_prop, pval ?: prop_map[i].def_val);
+        property_set(prop_map[i].dest_prop, pval ? pval : prop_map[i].def_val);
     }
 
     pval = property_get("ro.boot.console");

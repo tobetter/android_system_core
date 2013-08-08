@@ -49,6 +49,8 @@
 #include "log.h"
 #include "libubi.h"
 
+#include "make_ext4fs.h"
+
 #include <private/android_filesystem_config.h>
 
 #define DEFAULT_CTRL_DEV "/dev/ubi_ctrl"
@@ -474,7 +476,45 @@ int do_mount(int nargs, char **args)
             strcpy(tmp,  source);
         }
 
-        if (mount(tmp, target, system, flags, options) < 0) {
+        if (mount(tmp, target, system, flags, options) < 0){
+            ERROR("mount %s to target failed\n", tmp, target );
+			
+            if( strncmp(system, "ext4", 4) == 0 ){
+			
+                const char* pval = property_get("ro.firstboot");
+                ERROR("bootarg ro.firstboot=%s\n", pval);
+
+                if(pval && strcmp(pval, "1") == 0){
+				
+                    int result = 0;
+                    int fd = -1;
+
+                    ERROR("try format ext4 part [%s] at first boot time\n", tmp);
+#ifdef HAVE_SELINUX
+                    result = make_ext4fs(tmp, 0, target, sehandle);
+#else
+                    result = make_ext4fs(tmp, 0, target, NULL);
+#endif
+                    if (result != 0) {
+                        ERROR("format_volume: make_extf4fs failed on %s, err[%s]\n", tmp, strerror(errno) );
+                        return -1;
+                    }
+
+                    fd = open(tmp, O_RDWR);
+                    if(fd > 0){
+                        fsync(fd);
+                        close(fd);//sync to fs
+                    }
+
+                    //just try
+                    result = mount(tmp, target, system, flags, options);
+                    if (result) {
+                        ERROR("re-mount failed on %s, %s, %s, flag=0x%x, err[%s]\n", tmp, target, system, flags, strerror(errno) );
+                        return -2;
+                    }
+                    return 0;
+                }
+            }
             return -1;
         }
     }
@@ -1020,5 +1060,16 @@ int do_e2fsck(int nargs, char **args) {
         ERROR("e2fsck bad args %d.", nargs);
     }
 
+    return 0;
+}
+
+int do_bootcomplete(int nargs, char **args) {
+    const char *pval;
+    pval = property_get("ubootenv.var.firstboot");
+    ERROR("ubootenv.var.firstboot=%s\n", pval);
+    if(pval && strcmp(pval, "1") == 0){
+        property_set("ubootenv.var.firstboot", "0");
+        ERROR("clear fistbootvar to %s at firstboot\n", property_get("ubootenv.var.firstboot"));
+    }
     return 0;
 }

@@ -549,6 +549,11 @@ int init_bootenv_varibles(void) {
 		sprintf (BootenvPartitionName, "/dev/nand_env");
 		ENV_PARTITIONS_SIZE = 0x8000;
 		ENV_SIZE = ENV_PARTITIONS_SIZE - sizeof(long);
+	}else if(!stat("/dev/block/env", &st)){
+		INFO("stat /dev/block/env OK\n");
+		sprintf (BootenvPartitionName, "/dev/block/env");
+		ENV_PARTITIONS_SIZE = 0x8000;
+		ENV_SIZE = ENV_PARTITIONS_SIZE - sizeof(long);
 	}else if(!stat("/dev/block/ubootenv", &st)){
 
 		sprintf(BootenvPartitionName, "/dev/block/ubootenv");
