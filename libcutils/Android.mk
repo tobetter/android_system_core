@@ -77,12 +77,8 @@ else
         abort_socket.c \
         fs.c \
         selector.c \
-        tztime.c \
         multiuser.c \
         zygote.c
-
-    commonHostSources += \
-        tzstrftime.c
 endif
 
 
@@ -125,6 +121,7 @@ LOCAL_SRC_FILES := $(commonSources) \
         mq.c \
         partition_utils.c \
         qtaguid.c \
+        trace.c \
         uevent.c
 
 LOCAL_SRC_FILES += efuse_bch_8.c
@@ -147,7 +144,9 @@ include $(BUILD_STATIC_LIBRARY)
 
 include $(CLEAR_VARS)
 LOCAL_MODULE := libcutils
-LOCAL_WHOLE_STATIC_LIBRARIES := libcutils
+# TODO: remove liblog as whole static library, once we don't have prebuilt that requires
+# liblog symbols present in libcutils.
+LOCAL_WHOLE_STATIC_LIBRARIES := libcutils liblog
 LOCAL_SHARED_LIBRARIES := liblog
 LOCAL_CFLAGS += $(targetSmpFlag)
 LOCAL_C_INCLUDES := $(libcutils_c_includes)
@@ -160,3 +159,5 @@ LOCAL_SRC_FILES := str_parms.c hashmap.c memory.c
 LOCAL_SHARED_LIBRARIES := liblog
 LOCAL_MODULE_TAGS := optional
 include $(BUILD_EXECUTABLE)
+
+include $(call all-makefiles-under,$(LOCAL_PATH))

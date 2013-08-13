@@ -75,15 +75,12 @@ LOCAL_STATIC_LIBRARIES := libext4_utils_static libsparse_static libfs_mgr libcut
         libext2_uuid \
         libext2_profile \
         libext2_com_err \
-        libext2_e2p 
+        libext2_e2p \
+        liblogwrap \
+        liblog \
+        libselinux
 
 LOCAL_C_INCLUDES += system/extras/ext4_utils
-
-ifeq ($(HAVE_SELINUX),true)
-LOCAL_STATIC_LIBRARIES += libselinux
-LOCAL_C_INCLUDES += external/libselinux/include
-LOCAL_CFLAGS += -DHAVE_SELINUX
-endif
 
 include $(BUILD_EXECUTABLE)
 

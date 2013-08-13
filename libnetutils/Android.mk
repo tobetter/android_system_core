@@ -10,7 +10,8 @@ LOCAL_SRC_FILES:= \
 	netwrapper.c
 
 LOCAL_SHARED_LIBRARIES := \
-        libcutils
+        libcutils \
+        liblog
 
 LOCAL_MODULE:= libnetutils
 
