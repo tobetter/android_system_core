@@ -488,12 +488,18 @@ static void derive_permissions_locked(struct fuse* fuse, struct node *parent,
     }
 }
 
+/* Return if the calling UID holds sdcard_rw. */
+static bool get_caller_has_rw_locked(struct fuse* fuse, const struct fuse_in_header *hdr) {
+    appid_t appid = multiuser_get_app_id(hdr->uid);
+    return hashmapContainsKey(fuse->appid_with_rw, (void*) appid);
+}
+
 /* Kernel has already enforced everything we returned through
  * derive_permissions_locked(), so this is used to lock down access
  * even further, such as enforcing that apps hold sdcard_rw. */
 static bool check_caller_access_to_name(struct fuse* fuse,
         const struct fuse_in_header *hdr, const struct node* parent_node,
-        const char* name, int mode) {
+        const char* name, int mode, bool has_rw) {
     /* Always block security-sensitive files at root */
     if (parent_node && parent_node->perm == PERM_ROOT) {
         if (!strcmp(name, "autorun.inf")
@@ -520,13 +526,7 @@ static bool check_caller_access_to_name(struct fuse* fuse,
             return true;
         }
 
-        appid_t appid = multiuser_get_app_id(hdr->uid);
-
-        pthread_mutex_lock(&fuse->lock);
-        bool hasRw = hashmapContainsKey(fuse->appid_with_rw, (void*) appid);
-        pthread_mutex_unlock(&fuse->lock);
-
-        return hasRw;
+        return has_rw;
     }
 
     /* No extra permissions to enforce */
@@ -534,8 +534,8 @@ static bool check_caller_access_to_name(struct fuse* fuse,
 }
 
 static bool check_caller_access_to_node(struct fuse* fuse,
-        const struct fuse_in_header *hdr, const struct node* node, int mode) {
-    return check_caller_access_to_name(fuse, hdr, node->parent, node->name, mode);
+        const struct fuse_in_header *hdr, const struct node* node, int mode, bool has_rw) {
+    return check_caller_access_to_name(fuse, hdr, node->parent, node->name, mode, has_rw);
 }
 
 struct node *create_node_locked(struct fuse* fuse,
@@ -833,7 +833,7 @@ static int handle_lookup(struct fuse* fuse, struct fuse_handler* handler,
             child_path, sizeof(child_path), 1))) {
         return -ENOENT;
     }
-    if (!check_caller_access_to_name(fuse, hdr, parent_node, name, R_OK)) {
+    if (!check_caller_access_to_name(fuse, hdr, parent_node, name, R_OK, false)) {
         return -EACCES;
     }
 
@@ -874,7 +874,7 @@ static int handle_getattr(struct fuse* fuse, struct fuse_handler* handler,
     if (!node) {
         return -ENOENT;
     }
-    if (!check_caller_access_to_node(fuse, hdr, node, R_OK)) {
+    if (!check_caller_access_to_node(fuse, hdr, node, R_OK, false)) {
         return -EACCES;
     }
 
@@ -884,11 +884,13 @@ static int handle_getattr(struct fuse* fuse, struct fuse_handler* handler,
 static int handle_setattr(struct fuse* fuse, struct fuse_handler* handler,
         const struct fuse_in_header *hdr, const struct fuse_setattr_in *req)
 {
+    bool has_rw;
     struct node* node;
     char path[PATH_MAX];
     struct timespec times[2];
 
     pthread_mutex_lock(&fuse->lock);
+    has_rw = get_caller_has_rw_locked(fuse, hdr);
     node = lookup_node_and_path_by_id_locked(fuse, hdr->nodeid, path, sizeof(path));
     TRACE("[%d] SETATTR fh=%llx valid=%x @ %llx (%s)\n", handler->token,
             req->fh, req->valid, hdr->nodeid, node ? node->name : "?");
@@ -897,7 +899,7 @@ static int handle_setattr(struct fuse* fuse, struct fuse_handler* handler,
     if (!node) {
         return -ENOENT;
     }
-    if (!check_caller_access_to_node(fuse, hdr, node, W_OK)) {
+    if (!check_caller_access_to_node(fuse, hdr, node, W_OK, has_rw)) {
         return -EACCES;
     }
 
@@ -945,12 +947,14 @@ static int handle_setattr(struct fuse* fuse, struct fuse_handler* handler,
 static int handle_mknod(struct fuse* fuse, struct fuse_handler* handler,
         const struct fuse_in_header* hdr, const struct fuse_mknod_in* req, const char* name)
 {
+    bool has_rw;
     struct node* parent_node;
     char parent_path[PATH_MAX];
     char child_path[PATH_MAX];
     const char* actual_name;
 
     pthread_mutex_lock(&fuse->lock);
+    has_rw = get_caller_has_rw_locked(fuse, hdr);
     parent_node = lookup_node_and_path_by_id_locked(fuse, hdr->nodeid,
             parent_path, sizeof(parent_path));
     TRACE("[%d] MKNOD %s 0%o @ %llx (%s)\n", handler->token,
@@ -961,7 +965,7 @@ static int handle_mknod(struct fuse* fuse, struct fuse_handler* handler,
             child_path, sizeof(child_path), 1))) {
         return -ENOENT;
     }
-    if (!check_caller_access_to_name(fuse, hdr, parent_node, name, W_OK)) {
+    if (!check_caller_access_to_name(fuse, hdr, parent_node, name, W_OK, has_rw)) {
         return -EACCES;
     }
     __u32 mode = (req->mode & (~0777)) | 0664;
@@ -974,12 +978,14 @@ static int handle_mknod(struct fuse* fuse, struct fuse_handler* handler,
 static int handle_mkdir(struct fuse* fuse, struct fuse_handler* handler,
         const struct fuse_in_header* hdr, const struct fuse_mkdir_in* req, const char* name)
 {
+    bool has_rw;
     struct node* parent_node;
     char parent_path[PATH_MAX];
     char child_path[PATH_MAX];
     const char* actual_name;
 
     pthread_mutex_lock(&fuse->lock);
+    has_rw = get_caller_has_rw_locked(fuse, hdr);
     parent_node = lookup_node_and_path_by_id_locked(fuse, hdr->nodeid,
             parent_path, sizeof(parent_path));
     TRACE("[%d] MKDIR %s 0%o @ %llx (%s)\n", handler->token,
@@ -990,7 +996,7 @@ static int handle_mkdir(struct fuse* fuse, struct fuse_handler* handler,
             child_path, sizeof(child_path), 1))) {
         return -ENOENT;
     }
-    if (!check_caller_access_to_name(fuse, hdr, parent_node, name, W_OK)) {
+    if (!check_caller_access_to_name(fuse, hdr, parent_node, name, W_OK, has_rw)) {
         return -EACCES;
     }
     __u32 mode = (req->mode & (~0777)) | 0775;
@@ -1003,11 +1009,13 @@ static int handle_mkdir(struct fuse* fuse, struct fuse_handler* handler,
 static int handle_unlink(struct fuse* fuse, struct fuse_handler* handler,
         const struct fuse_in_header* hdr, const char* name)
 {
+    bool has_rw;
     struct node* parent_node;
     char parent_path[PATH_MAX];
     char child_path[PATH_MAX];
 
     pthread_mutex_lock(&fuse->lock);
+    has_rw = get_caller_has_rw_locked(fuse, hdr);
     parent_node = lookup_node_and_path_by_id_locked(fuse, hdr->nodeid,
             parent_path, sizeof(parent_path));
     TRACE("[%d] UNLINK %s @ %llx (%s)\n", handler->token,
@@ -1018,7 +1026,7 @@ static int handle_unlink(struct fuse* fuse, struct fuse_handler* handler,
             child_path, sizeof(child_path), 1)) {
         return -ENOENT;
     }
-    if (!check_caller_access_to_name(fuse, hdr, parent_node, name, W_OK)) {
+    if (!check_caller_access_to_name(fuse, hdr, parent_node, name, W_OK, has_rw)) {
         return -EACCES;
     }
     if (unlink(child_path) < 0) {
@@ -1030,11 +1038,13 @@ static int handle_unlink(struct fuse* fuse, struct fuse_handler* handler,
 static int handle_rmdir(struct fuse* fuse, struct fuse_handler* handler,
         const struct fuse_in_header* hdr, const char* name)
 {
+    bool has_rw;
     struct node* parent_node;
     char parent_path[PATH_MAX];
     char child_path[PATH_MAX];
 
     pthread_mutex_lock(&fuse->lock);
+    has_rw = get_caller_has_rw_locked(fuse, hdr);
     parent_node = lookup_node_and_path_by_id_locked(fuse, hdr->nodeid,
             parent_path, sizeof(parent_path));
     TRACE("[%d] RMDIR %s @ %llx (%s)\n", handler->token,
@@ -1045,7 +1055,7 @@ static int handle_rmdir(struct fuse* fuse, struct fuse_handler* handler,
             child_path, sizeof(child_path), 1)) {
         return -ENOENT;
     }
-    if (!check_caller_access_to_name(fuse, hdr, parent_node, name, W_OK)) {
+    if (!check_caller_access_to_name(fuse, hdr, parent_node, name, W_OK, has_rw)) {
         return -EACCES;
     }
     if (rmdir(child_path) < 0) {
@@ -1058,6 +1068,7 @@ static int handle_rename(struct fuse* fuse, struct fuse_handler* handler,
         const struct fuse_in_header* hdr, const struct fuse_rename_in* req,
         const char* old_name, const char* new_name)
 {
+    bool has_rw;
     struct node* old_parent_node;
     struct node* new_parent_node;
     struct node* child_node;
@@ -1069,6 +1080,7 @@ static int handle_rename(struct fuse* fuse, struct fuse_handler* handler,
     int res;
 
     pthread_mutex_lock(&fuse->lock);
+    has_rw = get_caller_has_rw_locked(fuse, hdr);
     old_parent_node = lookup_node_and_path_by_id_locked(fuse, hdr->nodeid,
             old_parent_path, sizeof(old_parent_path));
     new_parent_node = lookup_node_and_path_by_id_locked(fuse, req->newdir,
@@ -1081,11 +1093,11 @@ static int handle_rename(struct fuse* fuse, struct fuse_handler* handler,
         res = -ENOENT;
         goto lookup_error;
     }
-    if (!check_caller_access_to_name(fuse, hdr, old_parent_node, old_name, W_OK)) {
+    if (!check_caller_access_to_name(fuse, hdr, old_parent_node, old_name, W_OK, has_rw)) {
         res = -EACCES;
         goto lookup_error;
     }
-    if (!check_caller_access_to_name(fuse, hdr, new_parent_node, new_name, W_OK)) {
+    if (!check_caller_access_to_name(fuse, hdr, new_parent_node, new_name, W_OK, has_rw)) {
         res = -EACCES;
         goto lookup_error;
     }
@@ -1148,6 +1160,7 @@ static int open_flags_to_access_mode(int open_flags) {
 static int handle_open(struct fuse* fuse, struct fuse_handler* handler,
         const struct fuse_in_header* hdr, const struct fuse_open_in* req)
 {
+    bool has_rw;
     struct node* node;
     char path[PATH_MAX];
     struct fuse_open_out out;
@@ -1155,6 +1168,7 @@ static int handle_open(struct fuse* fuse, struct fuse_handler* handler,
 	struct stat f_stat;
 
     pthread_mutex_lock(&fuse->lock);
+    has_rw = get_caller_has_rw_locked(fuse, hdr);
     node = lookup_node_and_path_by_id_locked(fuse, hdr->nodeid, path, sizeof(path));
     TRACE("[%d] OPEN 0%o @ %llx (%s)\n", handler->token,
             req->flags, hdr->nodeid, node ? node->name : "?");
@@ -1163,7 +1177,8 @@ static int handle_open(struct fuse* fuse, struct fuse_handler* handler,
     if (!node) {
         return -ENOENT;
     }
-    if (!check_caller_access_to_node(fuse, hdr, node, open_flags_to_access_mode(req->flags))) {
+    if (!check_caller_access_to_node(fuse, hdr, node,
+            open_flags_to_access_mode(req->flags), has_rw)) {
         return -EACCES;
     }
     h = malloc(sizeof(*h));
@@ -1314,7 +1329,7 @@ static int handle_opendir(struct fuse* fuse, struct fuse_handler* handler,
     if (!node) {
         return -ENOENT;
     }
-    if (!check_caller_access_to_node(fuse, hdr, node, R_OK)) {
+    if (!check_caller_access_to_node(fuse, hdr, node, R_OK, false)) {
         return -EACCES;
     }
     h = malloc(sizeof(*h));
