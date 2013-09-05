@@ -564,7 +564,7 @@ static void handle_device(const char *action, const char *devpath,
         make_device(devpath, path, block, major, minor, (const char **)links);
         if (links) {
             for (i = 0; links[i]; i++)
-                makelink(devpath, links[i]);
+                make_link_init(devpath, links[i]);
         }
     }
 
