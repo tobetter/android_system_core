@@ -73,6 +73,7 @@ static char console[32];
 static char bootmode[32];
 static char hardware[32];
 static char resolution[32];
+static char realoutput[32];
 static char hdmimode[32];
 static char cvbsmode[32];
 static unsigned revision = 0;
@@ -657,6 +658,10 @@ static void import_kernel_nv(char *name, int for_emulator)
         if (!strcmp(name,"androidboot.resolution")) {
             strlcpy(resolution, value, sizeof(resolution));
         }
+		if (!strcmp(name,"androidboot.realoutput")) {
+			strlcpy(realoutput, value, sizeof(realoutput));
+			ERROR("androidboot.realoutput:%s\n",realoutput);
+			}
         cnt = snprintf(prop, sizeof(prop), "ro.boot.%s", boot_prop_name);
         if (cnt < PROP_NAME_MAX)
             property_set(prop, value);

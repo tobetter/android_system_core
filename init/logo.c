@@ -243,9 +243,17 @@ int load_565rle_image_mbx(char *fn,char* resolution,char* hdmimode,char* cvbsmod
               
 		#endif      
 	  write(fd_blank, "1", strlen("1"));
-	  write(fd_daxis, "0 0 1280 720 0 0 18 18", strlen("0 0 1280 720 0 0 18 18"));
-	  write(fd_faxis, "0 0 1279 719", strlen("0 0 1279 719"));
-	  write(fd_vaxis, "0 0 1279 719", strlen("0 0 1279 719"));
+	 // if(strcmp(realoutput,"true")==0){
+	  	ERROR("realoutput:true---");
+		write(fd_daxis, "0 0 1920 1080 0 0 18 18", strlen("0 0 1920 1080 0 0 18 18"));
+		write(fd_faxis, "0 0 1919 1079", strlen("0 0 1919 1079"));
+		write(fd_vaxis, "0 0 1919 1079", strlen("0 0 1919 1079"));
+		/*}else{
+		ERROR("realoutput:false---");
+		write(fd_daxis, "0 0 1280 720 0 0 18 18", strlen("0 0 1280 720 0 0 18 18"));
+		write(fd_faxis, "0 0 1279 719", strlen("0 0 1279 719"));
+		write(fd_vaxis, "0 0 1279 719", strlen("0 0 1279 719"));
+		}*/
 		if((!strncmp(resolution, "480i", 4)) || (!strncmp(resolution, "480p", 4)) || (!strncmp(resolution, "480cvbs", 7)))
 		{
 	  	write(fd_ppscale_rect, "0 0 719 479 0", strlen("0 0 719 479 0"));
@@ -268,7 +276,7 @@ int load_565rle_image_mbx(char *fn,char* resolution,char* hdmimode,char* cvbsmod
 		}
 		else
 	  {
-	  	write(fd_ppscale_rect, "0 0 1279 719 0", strlen("0 0 1279 719 0"));
+	  	write(fd_ppscale_rect, "0 0 1919 1079 0", strlen("0 0 1919 1079 0"));
 			//ERROR("set video axis: 0 0 1279 719");
 	  }
 	  
