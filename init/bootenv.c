@@ -552,7 +552,11 @@ int init_bootenv_varibles(void) {
 	}else if(!stat("/dev/block/env", &st)){
 		INFO("stat /dev/block/env OK\n");
 		sprintf (BootenvPartitionName, "/dev/block/env");
+		#ifdef MESON8_ENVSIZE
+		ENV_PARTITIONS_SIZE = 0x10000;
+		#else
 		ENV_PARTITIONS_SIZE = 0x8000;
+		#endif
 		ENV_SIZE = ENV_PARTITIONS_SIZE - sizeof(long);
 	}else if(!stat("/dev/block/ubootenv", &st)){
 
