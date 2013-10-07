@@ -274,6 +274,11 @@ int load_565rle_image_mbx(char *fn,char* resolution,char* hdmimode,char* cvbsmod
 	  	write(fd_ppscale_rect, "0 0 1919 1079 0", strlen("0 0 1919 1079 0"));
 			//ERROR("set video axis: 0 0 1919 1079");
 		}
+		else if(!strncmp(resolution, "4k2k", 4))
+	  {
+	  	write(fd_ppscale_rect, "0 0 3839 2159 0", strlen("0 0 3839 2159 0"));
+			//ERROR("set video axis: 0 0 1279 719");
+		}
 		else
 	  {
 	  	write(fd_ppscale_rect, "0 0 1919 1079 0", strlen("0 0 1919 1079 0"));
