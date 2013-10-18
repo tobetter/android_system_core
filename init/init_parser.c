@@ -79,9 +79,6 @@ struct {
 int lookup_keyword(const char *s)
 {
     switch (*s++) {
-    case 'b':
-        if (!strcmp(s, "ootcomplete")) return K_bootcomplete;
-        break;
     case 'c':
     if (!strcmp(s, "opy")) return K_copy;
         if (!strcmp(s, "apability")) return K_capability;
@@ -95,11 +92,13 @@ int lookup_keyword(const char *s)
         if (!strcmp(s, "hown")) return K_chown;
         if (!strcmp(s, "hmod")) return K_chmod;
         if (!strcmp(s, "ritical")) return K_critical;
+        if (!strcmp(s, "onfirm_formated")) return K_confirm_formated;
         break;
     case 'd':
         if (!strcmp(s, "isabled")) return K_disabled;
         if (!strcmp(s, "omainname")) return K_domainname;
         if (!strcmp(s, "alvik_recache")) return K_dalvik_recache;
+        if (!strcmp(s, "isplay_logo")) return K_display_logo;
         break;
     case 'e':
         if (!strcmp(s, "xec")) return K_exec;

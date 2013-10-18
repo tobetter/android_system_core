@@ -39,7 +39,8 @@ int do_wait(int nargs, char **args);
 int do_ubiattach(int argc, char **args);
 int do_ubidetach(int argc, char **args);
 int do_e2fsck(int nargs, char **args);
-int do_bootcomplete(int nargs, char **args);
+int do_confirm_formated(int nargs, char **args);
+int do_display_logo(int nargs, char **args);
 #define __MAKE_KEYWORD_ENUM__
 #define KEYWORD(symbol, flags, nargs, func) K_##symbol,
 enum {
@@ -102,7 +103,8 @@ enum {
     KEYWORD(ubidetach,   COMMAND, 1, do_ubidetach)
     KEYWORD(ioprio,      OPTION,  0, 0)
     KEYWORD(e2fsck,      COMMAND, 2, do_e2fsck)
-    KEYWORD(bootcomplete,      COMMAND, 0, do_bootcomplete)
+    KEYWORD(confirm_formated,      COMMAND, 3, do_confirm_formated)
+    KEYWORD(display_logo,      COMMAND, 1, do_display_logo )
 #ifdef __MAKE_KEYWORD_ENUM__
     KEYWORD_COUNT,
 };

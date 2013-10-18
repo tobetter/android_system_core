@@ -595,9 +595,9 @@ static int console_init_action(int nargs, char **args)
     close(fd);
     
 #ifndef MATCH_LOGO_SIZE
-    if( load_565rle_image(INIT_IMAGE_FILE) ) 
+    if( load_565rle_image(INIT_IMAGE_FILE) )
 #else
-    if( load_565rle_image_mbx(INIT_IMAGE_FILE,resolution,hdmimode,cvbsmode) ) 
+    if( load_565rle_image_mbx(INIT_IMAGE_FILE,resolution,hdmimode,cvbsmode) )
 #endif    	    	
 {
         fd = open("/dev/tty0", O_WRONLY);
@@ -810,6 +810,31 @@ static int ubootenv_init_action(int nargs, char **args)
     return 0;
 }
 
+static int aml_firstbootinit()
+{
+    const char *is_firstboot = property_get("ro.firstboot");
+    //ERROR("aml-firstboot-init flag1 is_firstboot:%s\n", is_firstboot);
+    if(is_firstboot && strncmp(is_firstboot, "1", 1) == 0) {
+        //ERROR("aml-firstboot-init flag2\n");
+        action_for_each_trigger("aml-firstboot-init", action_add_queue_tail);
+    }
+    //ERROR("aml-firstboot-init flag3\n");
+
+    return 0;
+}
+
+int set_firstboot_complete_flag(int nargs, char **args) {
+    const char *pval;
+    pval = property_get("ubootenv.var.firstboot");
+    //ERROR("ubootenv.var.firstboot=%s\n", pval);
+    if(pval && strncmp(pval, "1", 1) == 0){
+        property_set("ubootenv.var.firstboot", "0");
+        ERROR("clear fistbootvar to %s at firstboot\n", property_get("ubootenv.var.firstboot"));
+    }
+    return 0;
+}
+
+
 static const struct selinux_opt seopts_prop[] = {
         { SELABEL_OPT_PATH, "/data/security/property_contexts" },
         { SELABEL_OPT_PATH, "/property_contexts" },
@@ -970,6 +995,8 @@ int main(int argc, char **argv)
     /* execute all the boot actions to get us started */
     action_for_each_trigger("init", action_add_queue_tail);
 
+    aml_firstbootinit();
+    
     /* skip mounting filesystems in charger mode */
     if (!is_charger) {
         action_for_each_trigger("early-fs", action_add_queue_tail);
@@ -989,6 +1016,7 @@ int main(int argc, char **argv)
     } else {
         action_for_each_trigger("early-boot", action_add_queue_tail);
         queue_builtin_action(ubootenv_init_action, "ubootenv_init");
+        queue_builtin_action(set_firstboot_complete_flag, "firstboot_complete");
         action_for_each_trigger("boot", action_add_queue_tail);
     }
 

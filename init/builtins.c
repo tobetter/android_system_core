@@ -474,46 +474,9 @@ int do_mount(int nargs, char **args)
             strcpy(tmp,  source);
         }
 
-        if (mount(tmp, target, system, flags, options) < 0){
+	int mount_result = mount(tmp, target, system, flags, options);
+        if ( mount_result < 0){
             ERROR("mount %s to target failed\n", tmp, target );
-			
-            if( strncmp(system, "ext4", 4) == 0 ){
-			
-                const char* pval = property_get("ro.firstboot");
-                ERROR("bootarg ro.firstboot=%s\n", pval);
-
-                if(pval && strcmp(pval, "1") == 0){
-				
-                    int result = 0;
-                    int fd = -1;
-
-                    ERROR("try format ext4 part [%s] at first boot time\n", tmp);
-#ifdef HAVE_SELINUX
-                    result = make_ext4fs(tmp, 0, target, sehandle);
-#else
-                    result = make_ext4fs(tmp, 0, target, NULL);
-#endif
-                    if (result != 0) {
-                        ERROR("format_volume: make_extf4fs failed on %s, err[%s]\n", tmp, strerror(errno) );
-                        return -1;
-                    }
-
-                    fd = open(tmp, O_RDWR);
-                    if(fd > 0){
-                        fsync(fd);
-                        close(fd);//sync to fs
-                    }
-
-                    //just try
-                    result = mount(tmp, target, system, flags, options);
-                    if (result) {
-                        ERROR("re-mount failed on %s, %s, %s, flag=0x%x, err[%s]\n", tmp, target, system, flags, strerror(errno) );
-                        return -2;
-                    }
-                    return 0;
-                }
-            }
-            return -1;
         }
     }
 
@@ -661,6 +624,7 @@ int do_restart(int nargs, char **args)
         service_stop(svc);
         service_start(svc, NULL);
     }
+
     return 0;
 }
 
@@ -1054,13 +1018,61 @@ int do_e2fsck(int nargs, char **args) {
     return 0;
 }
 
-int do_bootcomplete(int nargs, char **args) {
-    const char *pval;
-    pval = property_get("ubootenv.var.firstboot");
-    ERROR("ubootenv.var.firstboot=%s\n", pval);
-    if(pval && strcmp(pval, "1") == 0){
-        property_set("ubootenv.var.firstboot", "0");
-        ERROR("clear fistbootvar to %s at firstboot\n", property_get("ubootenv.var.firstboot"));
-    }
+int do_confirm_formated(int nargs, char **args) {
+    //ERROR("enter do_confirm_formated\n");
+    int flags = MS_NOATIME | MS_NODIRATIME | MS_NOSUID | MS_NODEV;
+    char options[] = "noauto_da_alloc";
+
+    if( !strncmp( args[1], "ext4", 4 ) ) {
+	//ERROR("do_confirm_formated ext4\n");
+	int result = mount(args[2], args[3], "ext4", flags, options);
+
+	if ( result != 0 ){
+		ERROR("do_confirm_formated mount fail,maybe firstboot, need format, try format now\n");
+                int fd = -1;
+
+#ifdef HAVE_SELINUX
+                result = make_ext4fs(args[2], 0, args[3], sehandle);
+#else
+                result = make_ext4fs(args[2], 0, args[3], NULL);
+#endif
+                if (result != 0) {
+		    ERROR("do_confirm_formated mount make_extf4fs fail on %s, err[%s]\n", args[2], strerror(errno));
+                    return -1;
+                }
+
+                fd = open(args[2], O_RDWR);
+                if(fd > 0){
+                    fsync(fd);
+                    close(fd);//sync to fs
+                }
+
+                //just try
+                result = mount(args[2], args[3], "ext4", flags, options);
+                if( result != 0 ) {
+                    ERROR("do_confirm_formated re-mount failed on %s, %s, err[%s]\n", args[2], args[3], strerror(errno) );
+                    return -2;
+                }
+	}
+	
+	if( result == 0 ) {
+		result = umount(args[3]);
+    		if(result != 0) {
+        		ERROR("do_confirm_formated, umount fail!\n");
+    		}	
+	}
+    }  
+ 
     return 0;
+}
+
+int do_display_logo(int nargs, char **args) {
+    //ERROR("do_display_logo\n");
+     
+    int result = load_565rle_image(args[1]);
+    if(result != 0) {
+        ERROR("do_display_logo load image fail\n");
+    }
+
+    return result;
 }
