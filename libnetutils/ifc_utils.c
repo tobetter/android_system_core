@@ -614,6 +614,7 @@ int ifc_reset_connections(const char *ifname, const int reset_mask)
         ifc_init_ifr(ifname, &ifr);
         init_sockaddr_in(&ifr.ifr_addr, myaddr);
         result = ioctl(ifc_ctl_sock, SIOCKILLADDR,  &ifr);
+	ifc_set_addr(ifname, 0);
         ifc_close();
     } else {
         result = 0;
