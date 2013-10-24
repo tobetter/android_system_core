@@ -1069,7 +1069,7 @@ int do_confirm_formated(int nargs, char **args) {
 int do_display_logo(int nargs, char **args) {
     //ERROR("do_display_logo\n");
      
-    int result = load_565rle_image(args[1]);
+    int result = load_565rle_image_ex(args[1]);
     if(result != 0) {
         ERROR("do_display_logo load image fail\n");
     }

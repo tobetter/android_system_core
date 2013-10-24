@@ -579,6 +579,19 @@ static int keychord_init_action(int nargs, char **args)
     return 0;
 }
 
+int load_565rle_image_ex( char *file_name ) 
+{
+    int ret = 0;
+
+#ifndef MATCH_LOGO_SIZE
+    ret = load_565rle_image(file_name);
+#else
+    ret = load_565rle_image_mbx(file_name,resolution,hdmimode,cvbsmode);
+#endif
+
+    return ret;
+}
+
 static int console_init_action(int nargs, char **args)
 {
     int fd;
@@ -593,12 +606,9 @@ static int console_init_action(int nargs, char **args)
     if (fd >= 0)
         have_console = 1;
     close(fd);
-    
-#ifndef MATCH_LOGO_SIZE
-    if( load_565rle_image(INIT_IMAGE_FILE) )
-#else
-    if( load_565rle_image_mbx(INIT_IMAGE_FILE,resolution,hdmimode,cvbsmode) )
-#endif    	    	
+
+
+    if( load_565rle_image_ex(INIT_IMAGE_FILE) )    
 {
         fd = open("/dev/tty0", O_WRONLY);
         if (fd >= 0) {
