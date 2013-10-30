@@ -109,6 +109,8 @@ struct {
     { "vplayer.",         AID_SYSTEM,    0 },
     { "mbx.",             AID_SYSTEM,    0 },
     { "media.libplayer.",	AID_SYSTEM,    0 },
+    { "media.libplayer.",	AID_MEDIA,    0 },
+    
     { NULL, 0, 0 }
 };
 
