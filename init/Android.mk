@@ -10,7 +10,6 @@ LOCAL_SRC_FILES:= \
 	property_service.c \
 	util.c \
 	parser.c \
-	bootenv.c \
 	logo.c \
 	keychords.c \
 	signal_handler.c \
@@ -71,7 +70,7 @@ LOCAL_FORCE_STATIC_EXECUTABLE := true
 LOCAL_MODULE_PATH := $(TARGET_ROOT_OUT)
 LOCAL_UNSTRIPPED_PATH := $(TARGET_ROOT_OUT_UNSTRIPPED)
 
-LOCAL_STATIC_LIBRARIES := libext4_utils_static libsparse_static libfs_mgr libcutils libc libz \
+LOCAL_STATIC_LIBRARIES := libext4_utils_static libsparse_static libfs_mgr libc libz \
 	libe2fsck_static \
         libext2fs \
         libext2_blkid \
@@ -80,9 +79,10 @@ LOCAL_STATIC_LIBRARIES := libext4_utils_static libsparse_static libfs_mgr libcut
         libext2_com_err \
         libext2_e2p \
         liblogwrap \
+	libcutils \
         liblog \
-        libselinux
-
+        libselinux \
+	libmincrypt
 LOCAL_C_INCLUDES += system/extras/ext4_utils
 
 include $(BUILD_EXECUTABLE)

@@ -14,8 +14,6 @@
  * limitations under the License.
  */
 
-#define LOG_TAG "adbd"
-
 #include <stdlib.h>
 #include <stdio.h>
 #include <unistd.h>
@@ -31,8 +29,6 @@
 #include <linux/fb.h>
 #include <sys/ioctl.h>
 #include <sys/mman.h>
-
-#include <cutils/log.h>
 
 /* TODO:
 ** - sync with vsync to avoid tearing
@@ -164,12 +160,9 @@ void framebuffer_service(int fd, void *cookie)
             goto done;
     }
 
-	//ALOGI("framebuffer service fb size:%d", fbinfo.size);
-	
     /* write header */
     if(writex(fd, &fbinfo, sizeof(fbinfo))) goto done;
 
-#if 0//this has bug, tellen modify 20120706
     /* write data */
     for(i = 0; i < fbinfo.size; i += sizeof(buf)) {
       if(readx(fd_screencap, buf, sizeof(buf))) goto done;
@@ -177,22 +170,6 @@ void framebuffer_service(int fd, void *cookie)
     }
     if(readx(fd_screencap, buf, fbinfo.size % sizeof(buf))) goto done;
     if(writex(fd, buf, fbinfo.size % sizeof(buf))) goto done;
-#else
-	{
-    	int step = fbinfo.size/sizeof(buf);
-    	for(i = 0; i < step; i ++) {
-	      if(readx(fd_screencap, buf, sizeof(buf))) goto done;
-	      if(writex(fd, buf, sizeof(buf))) goto done;
-	    }
-
-		if((fbinfo.size % sizeof(buf)) > 0){
-		    if(readx(fd_screencap, buf, fbinfo.size % sizeof(buf))) goto done;
-		    if(writex(fd, buf, fbinfo.size % sizeof(buf))) goto done;
-		}
-    }
-#endif
-
-	//ALOGI("framebuffer service done");
 
 done:
     TEMP_FAILURE_RETRY(waitpid(pid, NULL, 0));

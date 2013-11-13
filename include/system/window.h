@@ -233,9 +233,10 @@ enum {
     NATIVE_WINDOW_CONSUMER_RUNNING_BEHIND = 9,
 
     /*
-     * Usage of the ANativeWindow
+     * The consumer gralloc usage bits currently set by the consumer.
+     * The values are defined in hardware/libhardware/include/gralloc.h.
      */
-    NATIVE_WINDOW_USAGE = 10,
+    NATIVE_WINDOW_CONSUMER_USAGE_BITS = 10
 };
 
 /* Valid operations for the (*perform)() hook.

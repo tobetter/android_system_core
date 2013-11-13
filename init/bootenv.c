@@ -1,7 +1,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
-
+#include "property_service.h"
 #include <errno.h>
 #include <string.h>
 #include <unistd.h>
@@ -13,10 +13,9 @@
 #include <zlib.h>
 
 #include "init.h"
-#include "property_service.h"
-#include "bootenv.h"
 #include "log.h"
-#include "util.h"
+#include <cutils/list.h>
+#include <sys/system_properties.h>
 
 #ifdef MTD_OLD
 # include <stdint.h>
@@ -108,6 +107,7 @@ env_parse_attribute(void)
     return &env_attribute_header;
 }
 
+
 /*  attribute revert to sava data*/
 static int
 env_revert_attribute(void)
@@ -138,7 +138,6 @@ void  bootenv_print(void)
 		attr = attr->next;
 	}
 }
-
 int
 read_bootenv()
 {
@@ -195,7 +194,6 @@ read_bootenv()
 }
 
 
-
 const char * bootenv_get_value(const char * key)
 {
 	env_attribute *attr=&env_attribute_header;
@@ -236,7 +234,6 @@ int bootenv_set_value(const char * key,  const char * value,int creat_args_flag)
 	}else
 		return 0;
 }
-
 
 int save_bootenv()
 {
@@ -344,12 +341,11 @@ static void init_bootenv_prop(const char *key, const char *value, void *cookie)
 		if (!varible_value)
 			varible_value = "";
 		if (strcmp(varible_value, value)) {
-			property_set(key, varible_value);
+			//property_set(key, varible_value);
 			(*((int*)cookie))++;
 		}		
 	}
 }
-
 #if BOOT_ARGS_CHECK
 
 char mac_address[20] = {0};
@@ -434,7 +430,6 @@ int read_args_from_file()
     return 0;
 }
 
-
 int write_args_to_file()
 {
 	int fd;
@@ -517,7 +512,6 @@ void check_boot_args()
 
 #endif
 
-
 int init_bootenv_varibles(void) {
 	struct stat st;
 	struct mtd_info_user info;
@@ -593,35 +587,32 @@ int init_bootenv_varibles(void) {
 		ERROR("read %s failed \n", BootenvPartitionName);
 		return  -2;
 	}
-
-    const char* prefix = property_get("ro.ubootenv.varible.prefix");
-    if (!prefix) {
-		prefix = "ubootenv.var";
-		property_set("ro.ubootenv.varible.prefix",  prefix);
-    }
-    
-    if (!(*prefix)) {
-		NOTICE("Cannot r/w ubootenv varibles - prefix is empty.\n");
-		return -3;
-    }
 	
-    if (strlen(prefix) > 16) {
+	char prefix[PROP_VALUE_MAX] = {0};
+	ret = property_get("ro.ubootenv.varible.prefix", prefix);
+
+	if ( ret == 0) {
+		strcpy(prefix, "ubootenv.var");
+		//property_set("ro.ubootenv.varible.prefix",  prefix);
+	}
+
+	if (strlen(prefix) > 16) {
 		NOTICE("Cannot r/w ubootenv varibles - prefix length > 16.\n");
 		return -4;
-    }
+	}
 
-    sprintf(PROFIX_UBOOTENV_VAR, "%s.", prefix);
-    INFO("ubootenv varible prefix is: %s\n", prefix);
-	
+	sprintf(PROFIX_UBOOTENV_VAR, "%s.", prefix);
+	INFO("ubootenv varible prefix is: %s\n", prefix);
 	
 	property_list(init_bootenv_prop, (void*)&count);
-
 	char bootcmd[32];
+        char val[PROP_VALUE_MAX]={0};
 	sprintf(bootcmd, "%s.bootcmd", prefix);
-	if (property_get(bootcmd) == NULL) {
+	property_get(bootcmd, val);
+	if(strlen(val) == 0) {
 		const char* value = bootenv_get_value("bootcmd");
 		INFO("value: %s\n", value);
-		property_set(bootcmd, value);
+		//property_set(bootcmd, value);
 		count ++;
 	}
 	
@@ -682,5 +673,3 @@ int update_bootenv_varible(const char* name, const char* value)
 	#endif
 	return ret;
 }
-
-

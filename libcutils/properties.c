@@ -27,7 +27,6 @@
 #include "loghack.h"
 
 #ifdef HAVE_LIBC_SYSTEM_PROPERTIES
-
 #define _REALLY_INCLUDE_SYS__SYSTEM_PROPERTIES_H_
 #include <sys/_system_properties.h>
 
@@ -52,23 +51,31 @@ int property_get(const char *key, char *value, const char *default_value)
     return len;
 }
 
-int property_list(void (*propfn)(const char *key, const char *value, void *cookie), 
-                  void *cookie)
+struct property_list_callback_data
+{
+    void (*propfn)(const char *key, const char *value, void *cookie);
+    void *cookie;
+};
+
+static void property_list_callback(const prop_info *pi, void *cookie)
 {
     char name[PROP_NAME_MAX];
     char value[PROP_VALUE_MAX];
-    const prop_info *pi;
-    unsigned n;
-    
-    for(n = 0; (pi = __system_property_find_nth(n)); n++) {
-        __system_property_read(pi, name, value);
-        propfn(name, value, cookie);
-    }
-    return 0;
+    struct property_list_callback_data *data = cookie;
+
+    __system_property_read(pi, name, value);
+    data->propfn(name, value, data->cookie);
+}
+
+int property_list(
+        void (*propfn)(const char *key, const char *value, void *cookie),
+        void *cookie)
+{
+    struct property_list_callback_data data = { propfn, cookie };
+    return __system_property_foreach(property_list_callback, &data);
 }
 
 #elif defined(HAVE_SYSTEM_PROPERTY_SERVER)
-
 /*
  * The Linux simulator provides a "system property server" that uses IPC
  * to set/get/list properties.  The file descriptor is shared by all

@@ -289,7 +289,7 @@ int netwrapper_main(const char *server_path)
     char *cmd;
     
 	for (;;) {
-		char str_to[32] = {0,};     
+		char str_to[PROPERTY_VALUE_MAX] = {0,};     
 		property_get(NETWRAPPER_SELECT_TO_PROP_NAME, str_to, "10");
 		tv.tv_sec = atoi(str_to);
 		tv.tv_usec = 0;

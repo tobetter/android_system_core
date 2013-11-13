@@ -24,11 +24,9 @@ endif
 hostSmpFlag := -DANDROID_SMP=0
 
 commonSources := \
-	array.c \
 	hashmap.c \
 	atomic.c.arm \
 	native_handle.c \
-	buffer.c \
 	socket_inaddr_any_server.c \
 	socket_local_client.c \
 	socket_local_server.c \
@@ -45,8 +43,6 @@ commonSources := \
 	strdup8to16.c \
 	record_stream.c \
 	process_name.c \
-	properties.c \
-	qsort_r_compat.c \
 	threads.c \
 	sched_policy.c \
 	iosched_policy.c \
@@ -71,11 +67,8 @@ endif
 
 ifneq ($(WINDOWS_HOST_ONLY),1)
     commonSources += \
-        abort_socket.c \
         fs.c \
-        selector.c \
-        multiuser.c \
-        zygote.c
+        multiuser.c
 endif
 
 
@@ -115,8 +108,8 @@ LOCAL_SRC_FILES := $(commonSources) \
         ashmem-dev.c \
         debugger.c \
         klog.c \
-        mq.c \
         partition_utils.c \
+        properties.c \
         qtaguid.c \
         trace.c \
         uevent.c
@@ -130,7 +123,11 @@ ifeq ($(TARGET_ARCH_VARIANT),x86-atom)
 LOCAL_CFLAGS += -DHAVE_MEMSET16 -DHAVE_MEMSET32
 LOCAL_SRC_FILES += arch-x86/android_memset16.S arch-x86/android_memset32.S memory.c
 else # !x86-atom
+ifeq ($(TARGET_ARCH),mips)
+LOCAL_SRC_FILES += arch-mips/android_memset.c
+else # !mips
 LOCAL_SRC_FILES += memory.c
+endif # !mips
 endif # !x86-atom
 endif # !arm
 

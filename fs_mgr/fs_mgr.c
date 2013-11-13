@@ -34,18 +34,26 @@
 #define SWAP_FLAG_PRIO_SHIFT    0
 #define SWAP_FLAG_DISCARD       0x10000
 
+#include <linux/loop.h>
 #include <private/android_filesystem_config.h>
 #include <cutils/partition_utils.h>
 #include <cutils/properties.h>
 #include <logwrap/logwrap.h>
 
+#include "mincrypt/rsa.h"
+#include "mincrypt/sha.h"
+#include "mincrypt/sha256.h"
+
 #include "fs_mgr_priv.h"
+#include "fs_mgr_priv_verity.h"
 
 #define KEY_LOC_PROP   "ro.crypto.keyfile.userdata"
 #define KEY_IN_FOOTER  "footer"
 
 #define E2FSCK_BIN      "/system/bin/e2fsck"
 #define MKSWAP_BIN      "/system/bin/mkswap"
+
+#define FSCK_LOG_FILE   "/dev/fscklogs/log"
 
 #define ZRAM_CONF_DEV   "/sys/block/zram0/disksize"
 
@@ -85,6 +93,8 @@ static struct flag_list fs_mgr_flags[] = {
     { "recoveryonly",MF_RECOVERYONLY },
     { "swapprio=",   MF_SWAPPRIO },
     { "zramsize=",   MF_ZRAMSIZE },
+    { "verify",      MF_VERIFY },
+    { "noemulatedsd", MF_NOEMULATEDSD },
     { "defaults",    0 },
     { 0,             0 },
 };
@@ -420,6 +430,10 @@ void fs_mgr_free_fstab(struct fstab *fstab)
 {
     int i;
 
+    if (!fstab) {
+        return;
+    }
+
     for (i = 0; i < fstab->num_entries; i++) {
         /* Free the pointers return by strdup(3) */
         free(fstab->recs[i].blk_device);
@@ -476,7 +490,8 @@ static void check_fs(char *blk_device, char *fs_type, char *target)
         INFO("Running %s on %s\n", E2FSCK_BIN, blk_device);
 
         ret = android_fork_execvp_ext(ARRAY_SIZE(e2fsck_argv), e2fsck_argv,
-                                      &status, true, LOG_KLOG, true);
+                                      &status, true, LOG_KLOG | LOG_FILE,
+                                      true, FSCK_LOG_FILE);
 
         if (ret < 0) {
             /* No need to check for error in fork, we can't really handle it now */
@@ -588,9 +603,17 @@ int fs_mgr_mount_all(struct fstab *fstab)
                      fstab->recs[i].mount_point);
         }
 
+        if (fstab->recs[i].fs_mgr_flags & MF_VERIFY) {
+            if (fs_mgr_setup_verity(&fstab->recs[i]) < 0) {
+                ERROR("Could not set up verified partition, skipping!");
+                continue;
+            }
+        }
+
         mret = __mount(fstab->recs[i].blk_device, fstab->recs[i].mount_point,
-                       fstab->recs[i].fs_type, fstab->recs[i].flags,
-                       fstab->recs[i].fs_options);
+                     fstab->recs[i].fs_type, fstab->recs[i].flags,
+                     fstab->recs[i].fs_options);
+
         if (!mret) {
             /* Success!  Go get the next one */
             continue;
@@ -663,6 +686,13 @@ int fs_mgr_do_mount(struct fstab *fstab, char *n_name, char *n_blk_device,
         if (fstab->recs[i].fs_mgr_flags & MF_CHECK) {
             check_fs(n_blk_device, fstab->recs[i].fs_type,
                      fstab->recs[i].mount_point);
+        }
+
+        if (fstab->recs[i].fs_mgr_flags & MF_VERIFY) {
+            if (fs_mgr_setup_verity(&fstab->recs[i]) < 0) {
+                ERROR("Could not set up verified partition, skipping!");
+                continue;
+            }
         }
 
         /* Now mount it where requested */
@@ -778,7 +808,7 @@ int fs_mgr_swapon_all(struct fstab *fstab)
         /* Initialize the swap area */
         mkswap_argv[1] = fstab->recs[i].blk_device;
         err = android_fork_execvp_ext(ARRAY_SIZE(mkswap_argv), mkswap_argv,
-                                      &status, true, LOG_KLOG, false);
+                                      &status, true, LOG_KLOG, false, NULL);
         if (err) {
             ERROR("mkswap failed for %s\n", fstab->recs[i].blk_device);
             ret = -1;
@@ -910,3 +940,7 @@ int fs_mgr_is_encryptable(struct fstab_rec *fstab)
     return fstab->fs_mgr_flags & MF_CRYPT;
 }
 
+int fs_mgr_is_noemulatedsd(struct fstab_rec *fstab)
+{
+    return fstab->fs_mgr_flags & MF_NOEMULATEDSD;
+}
