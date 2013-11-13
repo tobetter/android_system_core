@@ -115,6 +115,7 @@ static int wait_for_one_process(int block)
         }
     }
 
+    svc->flags &= (~SVC_RESTART);
     svc->flags |= SVC_RESTARTING;
 
     /* Execute all onrestart commands for this service. */

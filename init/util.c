@@ -404,6 +404,7 @@ void sanitize(char *s)
         if (*s) *s = '_';
     }
 }
+
 void makelink(const char *oldpath, const char *newpath)
 {
     int ret;
