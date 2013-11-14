@@ -1,7 +1,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
-#include "property_service.h"
+
 #include <errno.h>
 #include <string.h>
 #include <unistd.h>
@@ -13,9 +13,10 @@
 #include <zlib.h>
 
 #include "init.h"
+#include "property_service.h"
+#include "bootenv.h"
 #include "log.h"
-#include <cutils/list.h>
-#include <sys/system_properties.h>
+#include "util.h"
 
 #ifdef MTD_OLD
 # include <stdint.h>
@@ -341,7 +342,7 @@ static void init_bootenv_prop(const char *key, const char *value, void *cookie)
 		if (!varible_value)
 			varible_value = "";
 		if (strcmp(varible_value, value)) {
-			//property_set(key, varible_value);
+			property_set(key, varible_value);
 			(*((int*)cookie))++;
 		}		
 	}
@@ -541,7 +542,11 @@ int init_bootenv_varibles(void) {
 	}else if(!stat("/dev/nand_env", &st)){
 		INFO("stat /dev/nand_env OK\n");
 		sprintf (BootenvPartitionName, "/dev/nand_env");
+		#ifdef MESON8_ENVSIZE
+		ENV_PARTITIONS_SIZE = 0x10000;
+		#else
 		ENV_PARTITIONS_SIZE = 0x8000;
+		#endif
 		ENV_SIZE = ENV_PARTITIONS_SIZE - sizeof(long);
 	}else if(!stat("/dev/block/env", &st)){
 		INFO("stat /dev/block/env OK\n");
@@ -587,16 +592,16 @@ int init_bootenv_varibles(void) {
 		ERROR("read %s failed \n", BootenvPartitionName);
 		return  -2;
 	}
+	char prefix[PROP_VALUE_MAX]={0};
+    property_get("ro.ubootenv.varible.prefix", prefix);
+    if (prefix[0]==0) {
+		strcpy(prefix , "ubootenv.var");
+		INFO("property_set ro.ubootenv.varible.prefix is: %s\n", prefix);
+		property_set("ro.ubootenv.varible.prefix",  prefix);
+    }
+    
 	
-	char prefix[PROP_VALUE_MAX] = {0};
-	ret = property_get("ro.ubootenv.varible.prefix", prefix);
-
-	if ( ret == 0) {
-		strcpy(prefix, "ubootenv.var");
-		//property_set("ro.ubootenv.varible.prefix",  prefix);
-	}
-
-	if (strlen(prefix) > 16) {
+    if (strlen(prefix) > 16) {
 		NOTICE("Cannot r/w ubootenv varibles - prefix length > 16.\n");
 		return -4;
 	}
@@ -606,13 +611,13 @@ int init_bootenv_varibles(void) {
 	
 	property_list(init_bootenv_prop, (void*)&count);
 	char bootcmd[32];
-        char val[PROP_VALUE_MAX]={0};
+    char val[PROP_VALUE_MAX]={0};
 	sprintf(bootcmd, "%s.bootcmd", prefix);
 	property_get(bootcmd, val);
-	if(strlen(val) == 0) {
+	if(val[0] == 0) {
 		const char* value = bootenv_get_value("bootcmd");
 		INFO("value: %s\n", value);
-		//property_set(bootcmd, value);
+		property_set(bootcmd, value);
 		count ++;
 	}
 	

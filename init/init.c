@@ -429,8 +429,19 @@ void service_restart(struct service *svc)
 
 void property_changed(const char *name, const char *value)
 {
-    if (property_triggers_enabled)
+    if (strcmp(name, "system.reboot.recovery") == 0
+		&& (strcmp(value, "true") == 0) ){
+		enter_recovery_mode(0);
+		return;
+    }
+    INFO("property_changed: property_triggers_enabled == %d \n",property_triggers_enabled);
+    if (property_triggers_enabled) {
+        INFO("property_changed: name [%s] value [%s] \n",name,value);
+    	if (is_bootenv_varible(name)) {
+    		update_bootenv_varible(name, value);
+    	}
         queue_property_triggers(name, value);
+    }
 }
 
 static void restart_service_if_needed(struct service *svc)
@@ -891,7 +902,7 @@ static int ubootenv_init_action(int nargs, char **args)
     chmod("/cache", 0770);
     chmod("/cache/recovery", 0770);
 
-    //init_bootenv_varibles();
+    init_bootenv_varibles();
     #if BOOT_ARGS_CHECK
     check_boot_args();
     #endif
@@ -1155,6 +1166,8 @@ int main(int argc, char **argv)
     queue_builtin_action(property_service_init_action, "property_service_init");
     queue_builtin_action(signal_init_action, "signal_init");
     queue_builtin_action(check_startup_action, "check_startup");
+    /* run all property triggers based on current state of the properties */
+    queue_builtin_action(queue_property_triggers_action, "queue_property_triggers");
 
     if (is_charger) {
         action_for_each_trigger("charger", action_add_queue_tail);
@@ -1164,9 +1177,6 @@ int main(int argc, char **argv)
         queue_builtin_action(set_firstboot_complete_flag, "firstboot_complete");
         action_for_each_trigger("boot", action_add_queue_tail);
     }
-
-        /* run all property triggers based on current state of the properties */
-    queue_builtin_action(queue_property_triggers_action, "queue_property_triggers");
 
 
 #if BOOTCHART

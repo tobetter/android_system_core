@@ -53,7 +53,7 @@
 
 static int persistent_properties_loaded = 0;
 static int property_area_inited = 0;
-
+static char uboot_var_prefix[32] = {0};
 static int property_set_fd = -1;
 
 /* White list of permissions for setting property services. */
@@ -104,6 +104,7 @@ struct {
 #endif // DOLBY_DAP
     { "persist.tv.",       AID_SYSTEM,   0 },
     { "tv.",               AID_SYSTEM,   0 },
+    { uboot_var_prefix,    AID_SYSTEM,   0 },
     { "camera.",           AID_MEDIA,    0 },
     { "rw.vout.",          AID_MEDIA,    0 },
     { "vplayer.",         AID_SYSTEM,    0 },
@@ -183,7 +184,7 @@ static int check_mac_perms(const char *name, char *sctx)
     if (selabel_lookup(sehandle_prop, &tctx, name, 1) != 0)
         goto err;
 
-    if (selinux_check_access(sctx, tctx, class, perm, name) == 0)
+    if (selinux_check_access(sctx, tctx, class, perm, (void*)name) == 0)
         result = 1;
 
     freecon(tctx);
@@ -345,6 +346,11 @@ int property_set(const char *name, const char *value)
             ERROR("Failed to set '%s'='%s'\n", name, value);
             return ret;
         }
+    	if(strcmp(name, "ro.ubootenv.varible.prefix") == 0) {
+    		int vlen = (valuelen < 30) ? valuelen : 30;
+    		memcpy(uboot_var_prefix, value, vlen);
+    		uboot_var_prefix[vlen] = '.';
+    	}
     }
     /* If name starts with "net." treat as a DNS property. */
     if (strncmp("net.", name, strlen("net.")) == 0)  {
@@ -369,6 +375,22 @@ int property_set(const char *name, const char *value)
         selinux_reload_policy();
     }
     property_changed(name, value);
+    return 0;
+}
+
+
+int property_list(void (*propfn)(const char *key, const char *value, void *cookie),
+                  void *cookie)
+{
+    char name[PROP_NAME_MAX];
+    char value[PROP_VALUE_MAX];
+    const prop_info *pi;
+    unsigned n;
+
+    for(n = 0; (pi = __system_property_find_nth(n)); n++) {
+        __system_property_read(pi, name, value);
+        propfn(name, value, cookie);
+    }
     return 0;
 }
 
