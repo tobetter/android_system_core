@@ -474,10 +474,46 @@ int do_mount(int nargs, char **args)
             strcpy(tmp,  source);
         }
 
+	//ERROR("try mount %s to target %s\n", tmp, target);
+
 	int mount_result = mount(tmp, target, system, flags, options);
         if ( mount_result < 0){
             ERROR("mount %s to target failed\n", tmp, target );
         }
+
+	//if mount cache fail,then format the cache and mount cache again
+	if( mount_result < 0 && strncmp(system, "ext4", 4) == 0 && strncmp(target, "/cache", 6) == 0 ) 
+	{
+		ERROR("mount cache fail,try format\n");
+		
+		int result = -1;
+
+		//format cache
+#ifdef HAVE_SELINUX
+                result = make_ext4fs(tmp, 0, target, sehandle);
+#else
+                result = make_ext4fs(tmp, 0, target, NULL);
+#endif
+
+		if (result != 0) {
+                        ERROR("format_volume: make_extf4fs failed on %s, err[%s]\n", tmp, strerror(errno) );
+                }
+
+		//mount after format
+		result = mount(tmp, target, system, flags, options);
+                if (result) {
+                        ERROR("re-mount failed on %s, %s, %s, flag=0x%x, err[%s]\n", tmp, target, system, flags, strerror(errno) );
+                        return -2;
+                }
+	}
+
+	//if mount data fail,then set prop ro.init.mountdatafail to true,for notify user data has been destory
+	if( mount_result < 0 && strncmp(target, "/data", 5) == 0 ) 
+	{
+		const char *mountdata_value = property_get("ro.init.mountdatafail");	
+		ERROR("mount data fail,set prop,mountdata_value:%s\n", ( (mountdata_value != 0) ? mountdata_value : "" ) );
+		property_set("ro.init.mountdatafail", "true");
+	}
     }
 
 exit_success:
@@ -1076,3 +1112,5 @@ int do_display_logo(int nargs, char **args) {
 
     return result;
 }
+
+
