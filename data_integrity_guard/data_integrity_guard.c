@@ -69,6 +69,7 @@ int main(int argc, char **argv)
 		int ro = is_data_ro();
 		if( ro == 1 ) 
 		{
+#if 0
 			//e2fsck
 			do_e2fsck( 2, "-y", "/dev/block/data");			
 	
@@ -82,6 +83,9 @@ int main(int argc, char **argv)
 			{
 				handleDataRo();
 		        }
+#else
+			handleDataRo();
+#endif
 		}
 
 		//check system partition
