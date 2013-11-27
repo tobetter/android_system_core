@@ -44,6 +44,7 @@ DIRS := $(addprefix $(TARGET_ROOT_OUT)/, \
 		proc \
 		sys \
 		system \
+		backup \
 		data \
 	) \
 	$(TARGET_OUT_DATA)
