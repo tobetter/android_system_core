@@ -197,93 +197,92 @@ int load_565rle_image_mbx(char *fn,char* resolution,char* hdmimode,char* cvbsmod
     unsigned count, max;
     int hpd_state_value;
     int fd;
-		int fd_vaxis, fd_daxis, fd_faxis, fd_freescale,  fd_blank, fd_ppscale, fd_ppscale_rect, fd_hpd_state;
-		
-		if((fd_vaxis = open("/sys/class/video/axis", O_RDWR)) < 0) {
-				ERROR("open /sys/class/video/axis fail.");
-		}
-		if((fd_daxis = open("/sys/class/display/axis", O_RDWR)) < 0) {
-				ERROR("open /sys/class/display/axis fail.");
-		}
-		if((fd_faxis = open("/sys/class/graphics/fb0/free_scale_axis", O_RDWR)) < 0) {
-				ERROR("open /sys/class/graphics/fb0/free_scale_axis fail.");
-		}
-		if((fd_freescale = open("/sys/class/graphics/fb0/free_scale", O_RDWR)) < 0) {
-				ERROR("open /sys/class/graphics/fb0/free_scale fail.");
-		}
+    int fd_vaxis, fd_daxis, fd_faxis, fd_waxis, fd_freescale,  fd_blank, fd_freescalemode, fd_hpd_state, fd_dmode;
 
-		if((fd_blank = open("/sys/class/graphics/fb0/blank", O_RDWR)) < 0) {
-				ERROR("open /sys/class/graphics/fb0/blank fail.");
-		}
-	
-		if((fd_ppscale = open("/sys/class/ppmgr/ppscaler", O_RDWR)) < 0) {
-				ERROR("open /sys/class/ppmgr/ppscaler fail.");
-		}
-		if((fd_ppscale_rect = open("/sys/class/ppmgr/ppscaler_rect", O_RDWR)) < 0) {
-				ERROR("open /sys/class/ppmgr/ppscaler_rect fail.");
-		}
-		if((fd_hpd_state = open("/sys/class/amhdmitx/amhdmitx0/hpd_state", O_RDWR)) < 0) {
-				ERROR("open /sys/class/amhdmitx/amhdmitx0/hpd_state.");
-		}
+    if((fd_vaxis = open("/sys/class/video/axis", O_RDWR)) < 0) {
+        ERROR("open /sys/class/video/axis fail.");
+    }
+    if((fd_daxis = open("/sys/class/display/axis", O_RDWR)) < 0) {
+        ERROR("open /sys/class/display/axis fail.");
+    }
+    if((fd_dmode = open("/sys/class/display/mode", O_RDWR)) < 0) {
+        ERROR("open /sys/class/display/mode fail.");
+    }
+    if((fd_faxis = open("/sys/class/graphics/fb0/free_scale_axis", O_RDWR)) < 0) {
+        ERROR("open /sys/class/graphics/fb0/free_scale_axis fail.");
+    }
+    if((fd_waxis = open("/sys/class/graphics/fb0/window_axis", O_RDWR)) < 0) {
+        ERROR("open /sys/class/graphics/fb0/window_axis fail.");
+    }
+    if((fd_freescale = open("/sys/class/graphics/fb0/free_scale", O_RDWR)) < 0) {
+        ERROR("open /sys/class/graphics/fb0/free_scale fail.");
+    }
+    if((fd_freescalemode = open("/sys/class/graphics/fb0/freescale_mode", O_RDWR)) < 0) {
+        ERROR("open /sys/class/graphics/fb0/freescale_mode fail.");
+    }
+    if((fd_blank = open("/sys/class/graphics/fb0/blank", O_RDWR)) < 0) {
+        ERROR("open /sys/class/graphics/fb0/blank fail.");
+    }
 
-		#ifdef HAS_HDMIONLY_FUNCTION
-			read(fd_hpd_state,&hpd_state_value, 2);
-			ERROR("hdmi hpd_status is :%d\n",hpd_state_value);
-			if(hpd_state_value==49)//ASCII 49 =1; hdmi connected
-				resolution = hdmimode;
-			else
-			{
-				if((strncmp(cvbsmode, "480cvbs", 7)!=0) && (strncmp(cvbsmode, "576cvbs", 7)!=0))
-				{ 
-					strlcpy(cvbsmode, "480cvbs", sizeof("480cvbs"));
-					ERROR("cvbsmode is null, use default value:%s\n",cvbsmode);
-				}
-				resolution = cvbsmode;
-			}
-              
-		#endif      
-	  write(fd_blank, "1", strlen("1"));
-	 // if(strcmp(realoutput,"true")==0){
-	  	ERROR("realoutput:true---");
-		write(fd_daxis, "0 0 1920 1080 0 0 18 18", strlen("0 0 1920 1080 0 0 18 18"));
-		write(fd_faxis, "0 0 1919 1079", strlen("0 0 1919 1079"));
-		write(fd_vaxis, "0 0 1919 1079", strlen("0 0 1919 1079"));
-		/*}else{
-		ERROR("realoutput:false---");
-		write(fd_daxis, "0 0 1280 720 0 0 18 18", strlen("0 0 1280 720 0 0 18 18"));
-		write(fd_faxis, "0 0 1279 719", strlen("0 0 1279 719"));
-		write(fd_vaxis, "0 0 1279 719", strlen("0 0 1279 719"));
-		}*/
-		if((!strncmp(resolution, "480i", 4)) || (!strncmp(resolution, "480p", 4)) || (!strncmp(resolution, "480cvbs", 7)))
-		{
-	  	write(fd_ppscale_rect, "0 0 719 479 0", strlen("0 0 719 479 0"));
-			//ERROR("set video axis: 0 0 719 479");
-		}
-		else if((!strncmp(resolution, "576i", 4)) || (!strncmp(resolution, "576p", 4))||(!strncmp(resolution, "576cvbs", 7)))
-		{
-	  	write(fd_ppscale_rect, "0 0 719 575 0", strlen("0 0 719 575 0"));
-			//ERROR("set video axis: 0 0 719 575");
-		}
-		else if(!strncmp(resolution, "720p", 4))
-	  {
-	  	write(fd_ppscale_rect, "0 0 1279 719 0", strlen("0 0 1279 719 0"));
-			//ERROR("set video axis: 0 0 1279 719");
-		}
-		else if((!strncmp(resolution, "1080i", 5)) || (!strncmp(resolution, "1080p", 5)))
-	  {
-	  	write(fd_ppscale_rect, "0 0 1919 1079 0", strlen("0 0 1919 1079 0"));
-			//ERROR("set video axis: 0 0 1919 1079");
-		}
-		else if(!strncmp(resolution, "4k2k", 4))
-	  {
-	  	write(fd_ppscale_rect, "0 0 3839 2159 0", strlen("0 0 3839 2159 0"));
-			//ERROR("set video axis: 0 0 1279 719");
-		}
-		else
-	  {
-	  	write(fd_ppscale_rect, "0 0 1919 1079 0", strlen("0 0 1919 1079 0"));
-			//ERROR("set video axis: 0 0 1279 719");
-	  }
+    if((fd_hpd_state = open("/sys/class/amhdmitx/amhdmitx0/hpd_state", O_RDWR)) < 0) {
+        ERROR("open /sys/class/amhdmitx/amhdmitx0/hpd_state.");
+    }
+
+#ifdef HAS_HDMIONLY_FUNCTION
+    read(fd_hpd_state,&hpd_state_value, 2);
+    ERROR("hdmi hpd_status is :%d\n",hpd_state_value);
+    if(hpd_state_value==49)//ASCII 49 =1; hdmi connected
+        resolution = hdmimode;
+    else
+    {
+        if((strncmp(cvbsmode, "480cvbs", 7)!=0) && (strncmp(cvbsmode, "576cvbs", 7)!=0))
+        { 
+            strlcpy(cvbsmode, "480cvbs", sizeof("480cvbs"));
+            ERROR("cvbsmode is null, use default value:%s\n",cvbsmode);
+        }
+        resolution = cvbsmode;
+    }
+
+#endif      
+    write(fd_blank, "1", strlen("1"));
+    write(fd_dmode, resolution, strlen(resolution));
+    // if(strcmp(realoutput,"true")==0){
+    ERROR("realoutput:true---");
+    write(fd_daxis, "0 0 1920 1080 0 0 18 18", strlen("0 0 1920 1080 0 0 18 18"));
+    write(fd_freescalemode, "1", strlen("1"));
+    write(fd_faxis, "0 0 1919 1079", strlen("0 0 1919 1079"));
+    write(fd_vaxis, "0 0 1919 1079", strlen("0 0 1919 1079"));
+    /*}else{
+    ERROR("realoutput:false---");
+    write(fd_daxis, "0 0 1280 720 0 0 18 18", strlen("0 0 1280 720 0 0 18 18"));
+    write(fd_faxis, "0 0 1279 719", strlen("0 0 1279 719"));
+    write(fd_vaxis, "0 0 1279 719", strlen("0 0 1279 719"));
+    }*/
+    
+    if(!strncmp(resolution, "480", 3))
+    {
+        write(fd_waxis, "0 0 719 479", strlen("0 0 719 479"));
+    }
+    else if(!strncmp(resolution, "576", 3))
+    {
+        write(fd_waxis, "0 0 719 575", strlen("0 0 719 575"));
+    }
+    else if(!strncmp(resolution, "720", 3))
+    {
+        write(fd_waxis, "0 0 1279 719", strlen("0 0 1279 719"));
+    }
+    else if(!strncmp(resolution, "1080", 4))
+    {
+        write(fd_waxis, "0 0 1919 1079", strlen("0 0 1919 1079"));
+    }
+    else if(!strncmp(resolution, "4k2k", 4))
+    {
+        write(fd_waxis, "0 0 3839 2159", strlen("0 0 3839 2159"));
+    }
+    else
+    {
+        write(fd_waxis, "0 0 1919 1079", strlen("0 0 1919 1079"));
+    }
 	  
     if (vt_set_mode(1)) 
         return -1;
@@ -341,16 +340,16 @@ int load_565rle_image_mbx(char *fn,char* resolution,char* hdmimode,char* cvbsmod
     fb_close(&fb);
     close(fd);
     unlink(fn);
-    write(fd_freescale, "1", strlen("1"));
-	  write(fd_ppscale, "1", strlen("1"));
-	  write(fd_blank, "0", strlen("0"));    
+    write(fd_freescale, "0x10001", strlen("0x10001"));
+    write(fd_blank, "0", strlen("0"));    
     close(fd_vaxis);
     close(fd_daxis);
     close(fd_faxis);
+    close(fd_waxis);
     close(fd_freescale);
+    close(fd_freescalemode);
+    close(fd_dmode);
     close(fd_blank);
-    close(fd_ppscale);
-    close(fd_ppscale_rect);
     close(fd_hpd_state);
     return 0;
 
@@ -399,17 +398,17 @@ fail_restore_text:
     }	
     fb_update(&fb);
     fb_close(&fb);
-    write(fd_freescale, "1", strlen("1"));
-    write(fd_ppscale, "1", strlen("1"));
-    write(fd_blank, "0", strlen("0"));
+    write(fd_freescale, "0x10001", strlen("0x10001"));
+    write(fd_blank, "0", strlen("0"));    
     close(fd_vaxis);
     close(fd_daxis);
     close(fd_faxis);
+    close(fd_waxis);
     close(fd_freescale);
+    close(fd_freescalemode);
+    close(fd_dmode);
     close(fd_blank);
-    close(fd_ppscale);
-    close(fd_ppscale_rect);
-
+    close(fd_hpd_state);
     return result;
 
 #else  
