@@ -508,13 +508,15 @@ int do_mount(int nargs, char **args)
                 }
 	}
 
-	//if mount data fail,then set prop ro.init.mountdatafail to true,for notify user data has been destory
-	if( mount_result < 0 && strncmp(target, "/data", 5) == 0 ) 
-	{
-		const char *mountdata_value = property_get("ro.init.mountdatafail");	
-		ERROR("mount data fail,set prop,mountdata_value:%s\n", ( (mountdata_value != 0) ? mountdata_value : "" ) );
-		property_set("ro.init.mountdatafail", "true");
-	}
+        //if mount data fail,then set prop ro.init.mountdatafail to true,for notify user data has been destory
+        if( mount_result < 0 && strncmp(target, "/data", 5) == 0 )
+        {
+            char mountdata_value[PROP_VALUE_MAX];
+            int ret;
+            ret = property_get("ro.init.mountdatafail", mountdata_value);
+            ERROR("mount data fail,set prop,mountdata_value:%s\n", (ret ? "" : mountdata_value ));
+            property_set("ro.init.mountdatafail", "true");
+        }
     }
 
 exit_success:
