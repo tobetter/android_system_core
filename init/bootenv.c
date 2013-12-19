@@ -617,8 +617,10 @@ int init_bootenv_varibles(void) {
 	if(val[0] == 0) {
 		const char* value = bootenv_get_value("bootcmd");
 		INFO("value: %s\n", value);
-		property_set(bootcmd, value);
-		count ++;
+		if (value) {
+			property_set(bootcmd, value);
+			count ++;
+		}
 	}
 	
 	INFO("Get %d varibles from %s succeed!\n", count, BootenvPartitionName);	
