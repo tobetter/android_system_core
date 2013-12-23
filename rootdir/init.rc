@@ -496,18 +496,28 @@ service drm /system/bin/drmserver
     user drm
     group drm system inet drmrpc
 
+service bootanim /system/bin/bootanimation
+    class main
+    user root
+    group graphics
+    disabled
+    oneshot
+    
+service bootvideo /system/bin/bootplayer /system/etc/bootvideo
+	class main
+	user root
+	group system
+	disabled
+	oneshot
+
+	on property:service.bootvideo=2
+	start bootvideo
+
 service media /system/bin/mediaserver
     class main
     user media
     group audio camera inet net_bt net_bt_admin net_bw_acct drmrpc mediadrm
     ioprio rt 4
-
-service bootanim /system/bin/bootanimation
-    class main
-    user graphics
-    group graphics
-    disabled
-    oneshot
 
 service installd /system/bin/installd
     class main
