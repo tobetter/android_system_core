@@ -458,7 +458,7 @@ service servicemanager /system/bin/servicemanager
 
 service vold /system/bin/vold
     class core
-    socket vold stream 0660 root mount
+    socket vold stream 0666 root mount
     ioprio be 2
 
 service netd /system/bin/netd
