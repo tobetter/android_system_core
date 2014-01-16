@@ -111,7 +111,8 @@ struct {
     { "mbx.",             AID_SYSTEM,    0 },
     { "media.libplayer.",	AID_SYSTEM,    0 },
     { "media.libplayer.",	AID_MEDIA,    0 },
-    
+    {"service.bootanim.exit",AID_GRAPHICS,0},
+    {"svc.bootanim",AID_GRAPHICS,0},
     { NULL, 0, 0 }
 };
 

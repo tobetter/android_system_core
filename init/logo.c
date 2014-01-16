@@ -197,7 +197,7 @@ int load_565rle_image_mbx(char *fn,char* resolution,char* hdmimode,char* cvbsmod
     unsigned count, max;
     int hpd_state_value;
     int fd;
-    int fd_vaxis, fd_daxis, fd_faxis, fd_waxis, fd_freescale,  fd_blank, fd_freescalemode, fd_hpd_state, fd_dmode;
+    int fd_vaxis, fd_daxis, fd_faxis, fd_waxis, fd_freescale,  fd_blank, fd_freescalemode, fd1_freescalemode, fd_hpd_state, fd_dmode;
 
     if((fd_vaxis = open("/sys/class/video/axis", O_RDWR)) < 0) {
         ERROR("open /sys/class/video/axis fail.");
@@ -219,6 +219,9 @@ int load_565rle_image_mbx(char *fn,char* resolution,char* hdmimode,char* cvbsmod
     }
     if((fd_freescalemode = open("/sys/class/graphics/fb0/freescale_mode", O_RDWR)) < 0) {
         ERROR("open /sys/class/graphics/fb0/freescale_mode fail.");
+    }
+    if((fd1_freescalemode = open("/sys/class/graphics/fb1/freescale_mode", O_RDWR)) < 0) {
+        ERROR("open /sys/class/graphics/fb1/freescale_mode fail.");
     }
     if((fd_blank = open("/sys/class/graphics/fb0/blank", O_RDWR)) < 0) {
         ERROR("open /sys/class/graphics/fb0/blank fail.");
@@ -244,12 +247,13 @@ int load_565rle_image_mbx(char *fn,char* resolution,char* hdmimode,char* cvbsmod
     }
 
 #endif      
-    write(fd_blank, "1", strlen("1"));
+    //write(fd_blank, "1", strlen("1"));
     write(fd_dmode, resolution, strlen(resolution));
     // if(strcmp(realoutput,"true")==0){
     ERROR("realoutput:true---");
     write(fd_daxis, "0 0 1920 1080 0 0 18 18", strlen("0 0 1920 1080 0 0 18 18"));
     write(fd_freescalemode, "1", strlen("1"));
+    write(fd1_freescalemode, "1", strlen("1"));
     write(fd_faxis, "0 0 1919 1079", strlen("0 0 1919 1079"));
     write(fd_vaxis, "0 0 1919 1079", strlen("0 0 1919 1079"));
     /*}else{
@@ -340,7 +344,7 @@ int load_565rle_image_mbx(char *fn,char* resolution,char* hdmimode,char* cvbsmod
     fb_close(&fb);
     close(fd);
     unlink(fn);
-    write(fd_freescale, "0x10001", strlen("0x10001"));
+    //write(fd_freescale, "0x10001", strlen("0x10001"));
     write(fd_blank, "0", strlen("0"));    
     close(fd_vaxis);
     close(fd_daxis);
@@ -348,6 +352,7 @@ int load_565rle_image_mbx(char *fn,char* resolution,char* hdmimode,char* cvbsmod
     close(fd_waxis);
     close(fd_freescale);
     close(fd_freescalemode);
+    close(fd1_freescalemode);
     close(fd_dmode);
     close(fd_blank);
     close(fd_hpd_state);
