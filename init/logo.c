@@ -187,6 +187,15 @@ fail_restore_text:
 #else
 int load_565rle_image_mbx(char *fn,char* resolution,char* hdmimode,char* cvbsmode)
 {
+
+    return 0;
+
+//don't show android rle logo on MBox.  we move display para to set_display_mode.sh
+// any questions , pls contact lei.qian.
+
+
+
+	
 #ifdef TVMODE_ALL_SCALE
 
     int result = 0;
