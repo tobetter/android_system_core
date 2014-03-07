@@ -364,6 +364,54 @@ static struct {
 
 #define DATA_MNT_POINT "/data"
 
+int u_read(int  fd, void*  buff, int  len)
+{
+    int  ret;
+    do { ret = read(fd, buff, len); } while (ret < 0 && errno == EINTR);
+    return ret;
+}
+
+int f_read(const char*  filename, char* buff, size_t  buffsize)
+{
+    int  len = 0;
+    int  fd  = open(filename, O_RDONLY);
+    if (fd >= 0) {
+        len = u_read(fd, buff, buffsize-1);
+        close(fd);
+    }
+    buff[len > 0 ? len : 0] = 0;
+    return len;
+}
+
+int is_cache_ro()
+{
+    int ro = 0;
+    char mounts[2048], *start, *end, *line;
+    f_read("/proc/mounts", mounts, sizeof(mounts));
+    start = mounts;
+
+    while( (end = strchr(start, '\n')))
+    {
+        line = start;
+        *end++ = 0;
+        start = end;
+
+        if( strstr( line, "/cache" ) != NULL )
+        {
+            if( strstr( line, "ro" ) != NULL )
+            {
+                ERROR("init: cache partition is read-only!\n");
+                ro = 1;
+            }
+            break;
+        }
+    }
+
+    //ERROR("init: is_cache_ro ret:%d\n",ro);
+
+    return ro;
+}
+
 /* mount <type> <device> <path> <flags ...> <options> */
 int do_mount(int nargs, char **args)
 {
@@ -517,6 +565,39 @@ int do_mount(int nargs, char **args)
             ERROR("mount data fail,set prop,mountdata_value:%s\n", (ret ? "" : mountdata_value ));
             property_set("ro.init.mountdatafail", "true");
         }
+        //if cache mount success, check if cache mount as readonly. if so, umount cache, format cache and then mount cache again
+        if( mount_result >= 0 && strcmp(target, "/cache") == 0 )
+        {
+               if( is_cache_ro() == 1 ) {
+                       if( umount(target) == 0 ) {
+                               int result = -1;
+#ifdef HAVE_SELINUX
+                               result = make_ext4fs(tmp, 0, target, sehandle);
+#else
+                               result = make_ext4fs(tmp, 0, target, NULL);
+#endif
+                               if (result != 0) {
+                                       ERROR("check cache ro,format_volume: make_extf4fs failed on %s, err[%s]\n", tmp, strerror(errno) );
+                               }
+
+                               result = mount(tmp, target, system, flags, options);
+                               if (result) {
+                                       ERROR("check cache ro,re-mount failed on %s, %s, %s, flag=0x%x, err[%s]\n", tmp, target, system, flags, strerror(errno) );
+                                       return -2;
+                               }
+                       } else {
+                               ERROR("check cache ro,umount cache fail");
+                       }
+               }               
+        }
+
+	//if mount data fail,then set prop ro.init.mountdatafail to true,for notify user data has been destory
+	if( mount_result < 0 && strncmp(target, "/data", 5) == 0 ) 
+	{
+		const char *mountdata_value = property_get("ro.init.mountdatafail");	
+		ERROR("mount data fail,set prop,mountdata_value:%s\n", ( (mountdata_value != 0) ? mountdata_value : "" ) );
+		property_set("ro.init.mountdatafail", "true");
+	}
     }
 
 exit_success:
