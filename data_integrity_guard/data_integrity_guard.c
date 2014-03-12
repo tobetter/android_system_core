@@ -348,7 +348,12 @@ int get_md5(const char *path, unsigned char* md5)
 }
 
 int is_support_system_bak() {
-	int sup_sys_bak = is_file_exist( SYSTEM_BAK_NODE );
+	int sup_sys_bak = 0;
+	char system_bak_enable[PROPERTY_VALUE_MAX];
+        property_get("ro.system_backup_enable", system_bak_enable, "0");
+        if(strcmp(system_bak_enable, "1") == 0){
+		sup_sys_bak = is_file_exist( SYSTEM_BAK_NODE );
+	}
 	ERROR("is_support_system_bak sup_sys_bak:%d\n", sup_sys_bak);
 	return sup_sys_bak;
 }
