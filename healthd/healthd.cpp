@@ -31,6 +31,8 @@
 #include <cutils/uevent.h>
 #include <sys/epoll.h>
 #include <sys/timerfd.h>
+#include <cutils/properties.h>
+ 
 
 using namespace android;
 
@@ -69,11 +71,13 @@ static BatteryMonitor* gBatteryMonitor;
 
 static bool nosvcmgr;
 
+static bool isMboxMode = false;
+
 static void wakealarm_set_interval(int interval) {
     struct itimerspec itval;
 
     if (wakealarm_fd == -1)
-            return;
+        return;
 
     wakealarm_wake_interval = interval;
 
@@ -85,8 +89,11 @@ static void wakealarm_set_interval(int interval) {
     itval.it_value.tv_sec = interval;
     itval.it_value.tv_nsec = 0;
 
-    if (timerfd_settime(wakealarm_fd, 0, &itval, NULL) == -1)
-        KLOG_ERROR(LOG_TAG, "wakealarm_set_interval: timerfd_settime failed\n");
+    if(!isMboxMode){
+        if (timerfd_settime(wakealarm_fd, 0, &itval, NULL) == -1)
+            KLOG_ERROR(LOG_TAG, "wakealarm_set_interval: timerfd_settime failed\n");
+    }
+
 }
 
 static void battery_update(void) {
@@ -270,6 +277,13 @@ int main(int argc, char **argv) {
         case '?':
         default:
             KLOG_WARNING(LOG_TAG, "Unrecognized healthd option: %c\n", ch);
+        }
+    }
+
+    char prop[PROPERTY_VALUE_MAX];
+    if (property_get("ro.platform.has.mbxuimode", prop, "false") > 0) {
+        if(strncmp(prop,"true",4)==0){
+            isMboxMode = true;
         }
     }
 
