@@ -18,7 +18,11 @@ LOCAL_STATIC_LIBRARIES := libcutils libc\
         libext2_profile \
         libext2_com_err \
 	libext2_e2p \
-	libcrypto_static
+	libcrypto_static \
+	libext4_utils_static \
+	libsparse_static \
+	libz\
+        libselinux
 
 include $(BUILD_EXECUTABLE)
 

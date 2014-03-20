@@ -28,7 +28,7 @@
 extern int e2fsck_main(int argc, char *argv[]);
 
 //data only check time in bootup:
-#define INTERVAL_IN_BOOT 5
+#define INTERVAL_IN_BOOT 1
 
 //data only check time in normal:
 #define INTERVAL_AFTER_BOOT 180
@@ -66,8 +66,8 @@ int main(int argc, char **argv)
                 }
 
 		//check data ro
-		int ro = is_data_ro();
-		if( ro == 1 ) 
+		int data_ro = is_data_ro();
+		if( data_ro == 1 ) 
 		{
 #if 0
 			//e2fsck
@@ -77,15 +77,22 @@ int main(int argc, char **argv)
 			do_remount("/dev/block/data", "/data", "ext4", 0);
 	
 			//read again	
-			ro = is_data_ro();
+			data_ro = is_data_ro();
 
-			if( ro == 1 ) 
+			if( data_ro == 1 ) 
 			{
 				handleDataRo();
 		        }
 #else
 			handleDataRo();
 #endif
+		}
+
+		//check cache ro
+		int cache_ro = is_cache_ro();
+		if( cache_ro == 1 )
+		{
+			handleCacheRo();
 		}
 
 		//check system partition
@@ -139,6 +146,51 @@ void handleDataRo() {
 		ERROR("handleDataRo start notify activity,RebootActivity\n");
                 system("/system/bin/am start -n com.amlogic.promptuser/com.amlogic.promptuser.RebootActivity");
         }
+}
+
+void handleCacheRo() {
+	const char cache_dev[] = "/dev/block/cache";
+	const char target[] = "/cache";
+	const char sys[] = "ext4";
+	int flags = MS_NOATIME | MS_NODIRATIME | MS_NOSUID | MS_NODEV;
+	const char options[] = "noauto_da_alloc";
+
+	if( is_file_exist(cache_dev) == 0 ) {
+		ERROR("handleCacheRo cache_dev:%s not exist", cache_dev);
+		return;
+	}
+
+	if( umount(target) == 0 ) {
+		int result = -1;
+
+/*
+#ifdef HAVE_SELINUX
+		result = make_ext4fs(cache_dev, 0, target, sehandle);
+#else
+		ERROR("dig debug make_ext4fs cache_dev:%s,target:%s ", cache_dev, target);
+		result = make_ext4fs(cache_dev, 0, target, NULL);
+#endif
+		if (result != 0) {
+			ERROR("handleCacheRo, format cache make_extf4fs err[%s]\n", strerror(errno) );
+		}
+*/
+		
+		char* cmd = NULL;
+		asprintf(&cmd, "/system/xbin/mkfs.ext2 %s", cache_dev);
+		if( cmd != NULL ) {
+			ERROR("format cmd:%s", cmd);
+        		system(cmd);
+        		free(cmd);
+		}
+
+		//mount ext4 /dev/block/cache /cache noatime nodiratime norelatime nosuid nodev noauto_da_alloc
+		result = mount(cache_dev, target, sys, flags, options);
+		if (result) {
+			ERROR("handleCacheRo, check cache ro,re-mount failed on err[%s]\n", strerror(errno) );
+		}
+	} else {
+		ERROR("handleCacheRo, check cache ro,umount cache fail");
+	}	
 }
 
 void do_remount( char* dev, char* target, char* system, int readonly ) {
@@ -231,6 +283,36 @@ int is_data_ro()
 
     return ro;
 }
+
+int is_cache_ro()
+{
+    int ro = 0;
+    char mounts[2048], *start, *end, *line;
+    f_read("/proc/mounts", mounts, sizeof(mounts));
+    start = mounts;
+
+    while( (end = strchr(start, '\n')))
+    {
+        line = start;
+        *end++ = 0;
+        start = end;
+
+        if( strstr( line, "/cache" ) != NULL )
+        {
+            if( strstr( line, "ro" ) != NULL )
+            {
+                ERROR("dig is_cache_ro, cache partition is read-only!\n");
+                ro = 1;
+            }
+            break;
+        }
+    }
+
+    //ERROR("dig is_cache_ro, is_cache_ro ret:%d\n",ro);
+
+    return ro;
+}
+
 
 int do_e2fsck(int nargs, char **args) {
 
