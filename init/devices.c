@@ -584,6 +584,8 @@ static void handle_generic_device_event(struct uevent *uevent)
 
     if (!strncmp(uevent->subsystem, "usb", 3)) {
          if (!strcmp(uevent->subsystem, "usb")) {
+//codewalker for /dev/bus/usb/ nodes.
+#if 0
             if (uevent->device_name) {
                 /*
                  * create device node provided by kernel if present
@@ -604,6 +606,7 @@ static void handle_generic_device_event(struct uevent *uevent)
                 }
              }
              else {
+#endif
                  /* This imitates the file system that would be created
                   * if we were using devfs instead.
                   * Minors are broken up into groups of 128, starting at "001"
@@ -616,7 +619,8 @@ static void handle_generic_device_event(struct uevent *uevent)
                  snprintf(devpath, sizeof(devpath), "/dev/bus/usb/%03d", bus_id);
                  make_dir(devpath, 0755);
                  snprintf(devpath, sizeof(devpath), "/dev/bus/usb/%03d/%03d", bus_id, device_id);
-             }
+//codewalker				 
+//        }
          } else {
              /* ignore other USB events */
              return;
