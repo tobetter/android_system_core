@@ -102,6 +102,10 @@ struct {
     // used for setting Dolby specific properties
     { "dolby.", AID_SYSTEM,   0 },
 #endif // DOLBY_DAP
+#ifdef EPG_ENABLE
+    // used for setting china epg property
+    { "epg.", AID_SYSTEM,   0 },
+#endif // EPG_ENABLE
     { "persist.tv.",       AID_SYSTEM,   0 },
     { "tv.",               AID_SYSTEM,   0 },
     { uboot_var_prefix,    AID_SYSTEM,   0 },

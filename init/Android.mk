@@ -3,6 +3,10 @@
 LOCAL_PATH:= $(call my-dir)
 include $(CLEAR_VARS)
 
+ifeq ($(CUSTOMER_SERIALNO_MAC), true)
+ LOCAL_CFLAGS += -DCUSTOMER_SERIALNO_MAC
+endif
+
 LOCAL_SRC_FILES:= \
 	builtins.c \
 	init.c \
@@ -64,6 +68,10 @@ endif #DOLBY_UDC_MULTICHANNEL
 ifdef DOLBY_DAP
 LOCAL_CFLAGS += -DDOLBY_DAP
 endif #DOLBY_DAP
+
+ifdef EPG_ENABLE
+LOCAL_CFLAGS += -DEPG_ENABLE
+endif #EPG_ENABLE
 
 LOCAL_MODULE:= init
 

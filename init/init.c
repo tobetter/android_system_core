@@ -775,6 +775,19 @@ static void export_kernel_boot_props(void)
     char tmp[PROP_VALUE_MAX] = {0};
     int ret;
     unsigned i;
+    #ifdef CUSTOMER_SERIALNO_MAC
+    struct {
+        const char *src_prop;
+        const char *dest_prop;
+        const char *def_val;
+    } prop_map[] = {
+        { "ro.boot.serialno", "ro.serialno", "00AA000102090300015F881036202785", },
+        { "ro.boot.mode", "ro.bootmode", "unknown", },
+        { "ro.boot.baseband", "ro.baseband", "unknown", },
+        { "ro.boot.bootloader", "ro.bootloader", "unknown", },
+        { "ro.boot.firstboot", "ro.firstboot", "0"},
+    };
+    #else
     struct {
         const char *src_prop;
         const char *dest_prop;
@@ -786,7 +799,7 @@ static void export_kernel_boot_props(void)
         { "ro.boot.bootloader", "ro.bootloader", "unknown", },
         { "ro.boot.firstboot", "ro.firstboot", "0"},
     };
-
+    #endif
     for (i = 0; i < ARRAY_SIZE(prop_map); i++) {
         ret = property_get(prop_map[i].src_prop, tmp);
         if (ret > 0)
@@ -820,6 +833,10 @@ static void export_kernel_boot_props(void)
         property_set("ro.factorytest", "2");
     else
         property_set("ro.factorytest", "0");
+    
+    #ifdef CUSTOMER_SERIALNO_MAC
+    property_set("ro.mac", "00:22:7E:0B:53:26");
+    #endif
 }
 
 static void process_kernel_cmdline(void)
