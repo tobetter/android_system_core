@@ -450,7 +450,7 @@ void get_hardware_name(char *hardware, unsigned int *revision)
         if (x) {
             x += 2;
             n = 0;
-            while (*x && *x != '\n') {
+            while (*x && *x != '\n' && !isspace(*x)) {
                 if (!isspace(*x))
                     hardware[n++] = tolower(*x);
                 x++;
