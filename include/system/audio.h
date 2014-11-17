@@ -149,6 +149,10 @@ typedef enum {
     AUDIO_FORMAT_HE_AAC_V1           = 0x05000000UL,
     AUDIO_FORMAT_HE_AAC_V2           = 0x06000000UL,
     AUDIO_FORMAT_VORBIS              = 0x07000000UL,
+    AUDIO_FORMAT_DTS                 = 0x08000000UL,
+    AUDIO_FORMAT_AC3                 = 0x09000000UL,
+    AUDIO_FORMAT_EAC3                = 0x0A000000UL,
+    AUDIO_FORMAT_TRUEHD              = 0x0B000000UL,
     AUDIO_FORMAT_MAIN_MASK           = 0xFF000000UL,
     AUDIO_FORMAT_SUB_MASK            = 0x00FFFFFFUL,
 
@@ -481,7 +485,9 @@ static inline bool audio_is_bluetooth_sco_device(audio_devices_t device)
 
 static inline bool audio_is_usb_device(audio_devices_t device)
 {
-    if ((popcount(device) == 1) && (device & AUDIO_DEVICE_OUT_ALL_USB))
+    device &= ~AUDIO_DEVICE_BIT_IN;
+    if ((popcount(device) == 1) && (device & (AUDIO_DEVICE_OUT_ALL_USB |
+		             AUDIO_DEVICE_IN_USB_DEVICE )))
         return true;
     else
         return false;
@@ -572,6 +578,10 @@ static inline bool audio_is_valid_format(audio_format_t format)
     case AUDIO_FORMAT_HE_AAC_V1:
     case AUDIO_FORMAT_HE_AAC_V2:
     case AUDIO_FORMAT_VORBIS:
+    case AUDIO_FORMAT_DTS:
+    case AUDIO_FORMAT_AC3:
+    case AUDIO_FORMAT_EAC3:
+    case AUDIO_FORMAT_TRUEHD:
         return true;
     default:
         return false;
@@ -581,6 +591,13 @@ static inline bool audio_is_valid_format(audio_format_t format)
 static inline bool audio_is_linear_pcm(audio_format_t format)
 {
     return ((format & AUDIO_FORMAT_MAIN_MASK) == AUDIO_FORMAT_PCM);
+}
+static inline bool audio_is_raw_data(audio_format_t format)
+{
+    return (((format & AUDIO_FORMAT_MAIN_MASK) == AUDIO_FORMAT_DTS) ||
+		 ((format & AUDIO_FORMAT_MAIN_MASK) == AUDIO_FORMAT_AC3) ||
+		 ((format & AUDIO_FORMAT_MAIN_MASK) == AUDIO_FORMAT_EAC3)||
+                 ((format & AUDIO_FORMAT_MAIN_MASK) == AUDIO_FORMAT_TRUEHD));
 }
 
 static inline size_t audio_bytes_per_sample(audio_format_t format)

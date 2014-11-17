@@ -174,6 +174,7 @@ enum {
      * count is non-positive or too big to be realized.
      */
     CAMERA_CMD_SET_VIDEO_BUFFER_COUNT = 10,
+    CAMERA_APK_NAME =11,
 };
 
 /** camera fatal errors */
