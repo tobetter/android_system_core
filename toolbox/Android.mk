@@ -127,3 +127,55 @@ ALL_DEFAULT_INSTALLED_MODULES += $(SYMLINKS)
 # local module name
 ALL_MODULES.$(LOCAL_MODULE).INSTALLED := \
     $(ALL_MODULES.$(LOCAL_MODULE).INSTALLED) $(SYMLINKS)
+
+# Static Toolbox
+
+include $(CLEAR_VARS)
+
+LOCAL_SRC_FILES := \
+        dynarray.c \
+        toolbox.c \
+        $(patsubst %,%.c,$(TOOLS)) \
+        cp/cp.c cp/utils.c \
+        grep/grep.c grep/fastgrep.c grep/file.c grep/queue.c grep/util.c
+
+LOCAL_C_INCLUDES := bionic/libc/bionic
+LOCAL_CFLAGS := -static
+LOCAL_FORCE_STATIC_EXECUTABLE := true
+LOCAL_MODULE := static_toolbox
+LOCAL_MODULE_STEM := toolbox
+LOCAL_MODULE_TAGS := optional
+LOCAL_STATIC_LIBRARIES := libcutils liblog libc libusbhost libselinux
+LOCAL_MODULE_CLASS := UTILITY_EXECUTABLES
+LOCAL_MODULE_PATH := $(PRODUCT_OUT)/utilities/$(LOCAL_MODULE_STEM)/bin
+LOCAL_UNSTRIPPED_PATH := $(PRODUCT_OUT)/symbols/utilities
+
+# Including this will define $(intermediates).
+#
+include $(BUILD_EXECUTABLE)
+
+$(LOCAL_PATH)/toolbox.c: $(intermediates)/tools.h
+
+TOOLS_H := $(intermediates)/tools.h
+$(TOOLS_H): PRIVATE_TOOLS := $(ALL_TOOLS)
+$(TOOLS_H): PRIVATE_CUSTOM_TOOL = echo "/* file generated automatically */" > $@ ; for t in $(PRIVATE_TOOLS) ; do echo "TOOL($$t)" >> $@ ; done
+$(TOOLS_H): $(LOCAL_PATH)/Android.mk
+$(TOOLS_H):
+	$(transform-generated-source)
+
+# Make #!/system/bin/toolbox launchers for each tool.
+#
+SYMLINKS := $(addprefix $(LOCAL_MODULE_PATH)/,$(ALL_TOOLS))
+$(SYMLINKS): TOOLBOX_BINARY := $(LOCAL_MODULE_STEM)
+$(SYMLINKS): $(LOCAL_INSTALLED_MODULE) $(LOCAL_PATH)/Android.mk
+	echo "Symlink: $@ -> $(TOOLBOX_BINARY)"
+	mkdir -p $(dir $@)
+	rm -rf $@
+	ln -sf $(TOOLBOX_BINARY) $@
+
+ALL_DEFAULT_INSTALLED_MODULES += $(SYMLINKS)
+
+# We need this so that the installed files could be picked up based on the
+# local module name
+ALL_MODULES.$(LOCAL_MODULE).INSTALLED := \
+    $(ALL_MODULES.$(LOCAL_MODULE).INSTALLED) $(SYMLINKS)
