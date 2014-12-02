@@ -42,6 +42,7 @@
 
 #include "fs_mgr_priv.h"
 #include "fs_mgr_priv_verity.h"
+#include "make_ext4fs.h"
 
 #define KEY_LOC_PROP   "ro.crypto.keyfile.userdata"
 #define KEY_IN_FOOTER  "footer"
@@ -315,6 +316,104 @@ static int mount_with_alternatives(struct fstab *fstab, int start_idx, int *end_
     return 0;
 }
 
+void deal_patition_corrupt( struct fstab_rec * rec ) {
+    char* device = rec->blk_device;
+    char* mountpoint = rec->mount_point;
+    char *fs_type = rec->fs_type;
+    unsigned long flags = rec->flags;
+    char *fs_options = rec->fs_options;
+
+    if ( strcmp(mountpoint, "/data") == 0 ) { //if mount data fail,then set prop ro.init.mountdatafail to true,for notify user data has been destory
+        ERROR("deal_patition_corrupt mount data fail,set ro.init.mountdatafail to true\n");
+        property_set("ro.init.mountdatafail", "true");
+    }
+    else if ( strcmp(mountpoint, "/cache") == 0 ) { //if mount cache fail,then format the cache and mount cache again
+        ERROR("deal_patition_corrupt mount cache fail,try format\n");
+        int result = -1;
+        result = make_ext4fs(device, 0, mountpoint, NULL);
+        if (result != 0) {
+            ERROR("deal_patition_corrupt format_volume: make_extf4fs failed on %s, err[%s]\n", device, strerror(errno) );
+        }
+
+        //mount after format
+        result = __mount(device, mountpoint, rec);
+        if (result) {
+            ERROR("deal_patition_corrupt __mount fail after make_ext4fs cache\n" );
+        }
+    }
+}
+
+static int u_read(int  fd, void*  buff, int  len)
+{
+    int  ret;
+    do { ret = read(fd, buff, len); } while (ret < 0 && errno == EINTR);
+    return ret;
+}
+
+static int f_read(const char*  filename, char* buff, size_t  buffsize)
+{
+    int  len = 0;
+    int  fd  = open(filename, O_RDONLY);
+    if (fd >= 0) {
+        len = u_read(fd, buff, buffsize-1);
+        close(fd);
+    }
+    buff[len > 0 ? len : 0] = 0;
+    return len;
+}
+
+static int is_cache_ro()
+{
+    int ro = 0;
+    char mounts[2048], *start, *end, *line;
+    f_read("/proc/mounts", mounts, sizeof(mounts));
+    start = mounts;
+
+    while ( (end = strchr(start, '\n')))
+    {
+        line = start;
+        *end++ = 0;
+        start = end;
+
+        if ( strstr( line, "/cache" ) != NULL )
+        {
+            if ( strstr( line, "ro," ) != NULL )
+            {
+                ERROR("init: cache partition is read-only!\n");
+                ro = 1;
+            }
+            break;
+        }
+    }
+
+    //ERROR("init: is_cache_ro ret:%d\n",ro);
+
+    return ro;
+}
+
+void deal_cache_ro(struct fstab_rec * rec) {
+    char* blk_device = rec->blk_device;
+    char* mount_point = rec->mount_point;
+    char *fs_type = rec->fs_type;
+    unsigned long flags = rec->flags;
+    char *fs_options = rec->fs_options;
+
+    if ( umount(mount_point) == 0 ) {
+        int result = -1;
+        result = make_ext4fs(blk_device, 0, mount_point, NULL);
+        if (result != 0) {
+            ERROR("fs_mgr_mount_all check cache ro,format_volume: make_extf4fs failed on %s, err[%s]\n", blk_device, strerror(errno) );
+        }
+
+        result = __mount( blk_device, mount_point, rec );
+        if (result) {
+            ERROR("fs_mgr_mount_all check cache ro,re-mount failed on %s, %s, %s, flag=0x%lx, err[%s]\n", blk_device, mount_point, fs_type, flags, strerror(errno) );
+        }
+    } else {
+        ERROR("fs_mgr_mount_all check cache ro,umount cache fail");
+    }
+}
+
 /* When multiple fstab records share the same mount_point, it will
  * try to mount each one in turn, and ignore any duplicates after a
  * first successful mount.
@@ -381,6 +480,12 @@ int fs_mgr_mount_all(struct fstab *fstab)
                     continue;
                 }
             }
+
+            //if cache mount success, check if cache mount as readonly. if so, umount cache, format cache and then mount cache again
+            if ( (strcmp(fstab->recs[attempted_idx].mount_point, "/cache") == 0) && (is_cache_ro() == 1) ) {
+               deal_cache_ro( &(fstab->recs[attempted_idx]) );
+            }
+
             /* Success!  Go get the next one */
             continue;
         }
@@ -412,6 +517,7 @@ int fs_mgr_mount_all(struct fstab *fstab)
                    "%s at %s options: %s error: %s\n",
                    fstab->recs[attempted_idx].blk_device, fstab->recs[attempted_idx].mount_point,
                    fstab->recs[attempted_idx].fs_options, strerror(mount_errno));
+            deal_patition_corrupt( &(fstab->recs[attempted_idx]) );
             ++error_count;
             continue;
         }
