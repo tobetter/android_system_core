@@ -45,6 +45,7 @@
 #include "init_parser.h"
 #include "util.h"
 #include "log.h"
+#include "make_ext4fs.h"
 
 #include <private/android_filesystem_config.h>
 
@@ -940,4 +941,58 @@ int do_wait(int nargs, char **args)
         return wait_for_file(args[1], atoi(args[2]));
     } else
         return -1;
+}
+
+int do_confirm_formated(int nargs, char **args) {
+    ERROR("enter do_confirm_formated %s, %s\n", args[2], args[3]);
+    int flags = MS_NOATIME | MS_NODIRATIME | MS_NOSUID | MS_NODEV;
+    char options[] = "noauto_da_alloc";
+
+    char dev[128];
+    char mountpoint[128];
+
+    if ( nargs != 4 ) {
+        ERROR("do_confirm_formated nargs is not valid, nargs:%d\n", nargs);
+        return -1;
+    }
+
+    strcpy( dev, args[2] );
+    strcpy( mountpoint, args[3]);
+
+    if ( !strncmp( args[1], "ext4", 4 ) ) {
+        ERROR("do_confirm_formated ext4 try mount\n");
+        int result = mount(dev, mountpoint, "ext4", flags, options);
+        if ( result != 0 ) {
+            ERROR("do_confirm_formated mount fail,maybe firstboot, need format, try format now, dev:%s, mountpoint:%s\n", dev, mountpoint);
+            int fd = -1;
+            result = make_ext4fs(dev, 0, mountpoint, NULL);
+
+            if (result != 0) {
+                ERROR("do_confirm_formated mount make_extf4fs fail on %s, err[%s]\n", dev, strerror(errno));
+                return -1;
+            }
+
+            fd = open(dev, O_RDWR);
+            if (fd > 0) {
+                fsync(fd);
+                close(fd);//sync to fs
+            }
+
+            //just try
+            result = mount(dev, mountpoint, "ext4", flags, options);
+            if ( result != 0 ) {
+                ERROR("do_confirm_formated re-mount failed on %s, %s, err[%s]\n", dev, mountpoint, strerror(errno) );
+                return -1;
+            }
+        }
+
+        if ( result == 0 ) {
+            result = umount(mountpoint);
+            if (result != 0) {
+                ERROR("do_confirm_formated, umount fail!\n");
+            }
+        }
+    }
+
+    return 0;
 }

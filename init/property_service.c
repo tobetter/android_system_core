@@ -205,6 +205,17 @@ static bool is_legal_property_name(const char* name, size_t namelen)
     return true;
 }
 
+static void clear_firstboot_flag() {
+        const char* first_boot = bootenv_get("ubootenv.var.firstboot");
+	ERROR("clear_firstboot_flag");
+        if ( first_boot && ( strcmp(first_boot, "1") == 0 ) ) {
+            ERROR("clear_firstboot_flag first_boot:%s, clear it to 0\n", first_boot);
+            if ( bootenv_update("ubootenv.var.firstboot", "0") < 0 ) {
+                ERROR("clear_firstboot_flag set firstboot to 0 fail\n");
+            }
+        }
+}
+
 int property_set(const char *name, const char *value)
 {
     prop_info *pi;
@@ -230,8 +241,14 @@ int property_set(const char *name, const char *value)
             return ret;
         }
     }
+
+    //if boot completed, we should clear first boot flag if it is the first boot
+    if ( strncmp("sys.boot_completed", name, strlen("sys.boot_completed")) == 0 &&
+        strcmp("1", value) == 0 ) {
+	clear_firstboot_flag();
+    }
     /* If name starts with "net." treat as a DNS property. */
-    if (strncmp("net.", name, strlen("net.")) == 0)  {
+    else if (strncmp("net.", name, strlen("net.")) == 0)  {
         if (strcmp("net.change", name) == 0) {
             return 0;
         }

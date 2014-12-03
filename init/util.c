@@ -335,7 +335,7 @@ void sanitize(char *s)
     }
 }
 
-void make_link(const char *oldpath, const char *newpath)
+void makelink(const char *oldpath, const char *newpath)
 {
     int ret;
     char buf[256];

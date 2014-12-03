@@ -753,6 +753,7 @@ static void export_kernel_boot_props(void)
         { "ro.boot.mode", "ro.bootmode", "unknown", },
         { "ro.boot.baseband", "ro.baseband", "unknown", },
         { "ro.boot.bootloader", "ro.bootloader", "unknown", },
+        { "ro.boot.firstboot", "ro.firstboot", "0"},
     };
 
     for (i = 0; i < ARRAY_SIZE(prop_map); i++) {
@@ -998,6 +999,18 @@ static void selinux_initialize(void)
     security_setenforce(is_enforcing);
 }
 
+static int aml_firstbootinit()
+{
+    char is_firstboot[PROP_VALUE_MAX] = {0};
+    property_get("ro.firstboot", is_firstboot);
+    if (strncmp(is_firstboot, "1", 1) == 0) {
+        ERROR("aml-firstboot-init insert aml-firstboot-init\n");
+        action_for_each_trigger("aml-firstboot-init", action_add_queue_tail);
+    }
+
+    return 0;
+}
+
 int main(int argc, char **argv)
 {
     int fd_count = 0;
@@ -1085,6 +1098,8 @@ int main(int argc, char **argv)
 
     /* execute all the boot actions to get us started */
     action_for_each_trigger("init", action_add_queue_tail);
+
+    aml_firstbootinit();
 
     /* Repeat mix_hwrng_into_linux_rng in case /dev/hw_random or /dev/random
      * wasn't ready immediately after wait_for_coldboot_done

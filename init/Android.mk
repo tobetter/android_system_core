@@ -41,11 +41,18 @@ LOCAL_STATIC_LIBRARIES := \
 	libfs_mgr \
 	liblogwrap \
 	libcutils \
+	libsystemcontrol_static \
 	liblog \
 	libc \
 	libselinux \
 	libmincrypt \
-	libext4_utils_static
+	libext4_utils_static \
+	libsparse_static \
+	libz
+
+LOCAL_C_INCLUDES += system/extras/ext4_utils \
+		    external/zlib \
+		    vendor/amlogic/frameworks/services/systemcontrol
 
 LOCAL_ADDITIONAL_DEPENDENCIES += $(LOCAL_PATH)/Android.mk
 
