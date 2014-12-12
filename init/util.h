@@ -42,4 +42,5 @@ void import_kernel_cmdline(int in_qemu, void (*import_kernel_nv)(char *name, int
 int make_dir(const char *path, mode_t mode);
 int restorecon(const char *pathname);
 int restorecon_recursive(const char *pathname);
+void clear_firstboot_flag();
 #endif

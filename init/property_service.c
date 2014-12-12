@@ -205,18 +205,7 @@ static bool is_legal_property_name(const char* name, size_t namelen)
     return true;
 }
 
-static void clear_firstboot_flag() {
-        const char* first_boot = bootenv_get("ubootenv.var.firstboot");
-	ERROR("clear_firstboot_flag");
-        if ( first_boot && ( strcmp(first_boot, "1") == 0 ) ) {
-            ERROR("clear_firstboot_flag first_boot:%s, clear it to 0\n", first_boot);
-            if ( bootenv_update("ubootenv.var.firstboot", "0") < 0 ) {
-                ERROR("clear_firstboot_flag set firstboot to 0 fail\n");
-            }
-        }
-}
-
-int property_set(const char *name, const char *value)
+int init_property_set(const char *name, const char *value)
 {
     prop_info *pi;
     int ret;
@@ -242,10 +231,9 @@ int property_set(const char *name, const char *value)
         }
     }
 
-    //if boot completed, we should clear first boot flag if it is the first boot
     if ( strncmp("sys.boot_completed", name, strlen("sys.boot_completed")) == 0 &&
         strcmp("1", value) == 0 ) {
-	clear_firstboot_flag();
+        clear_firstboot_flag();
     }
     /* If name starts with "net." treat as a DNS property. */
     else if (strncmp("net.", name, strlen("net.")) == 0)  {
@@ -257,7 +245,7 @@ int property_set(const char *name, const char *value)
         * 'net.*' property name is updated. It is _ONLY_ updated here. Its value
         * contains the last updated 'net.*' property.
         */
-        property_set("net.change", name);
+        init_property_set("net.change", name);
     } else if (persistent_properties_loaded &&
             strncmp("persist.", name, strlen("persist.")) == 0) {
         /*
@@ -346,7 +334,7 @@ void handle_property_set_fd()
             }
         } else {
             if (check_perms(msg.name, source_ctx)) {
-                property_set((char*) msg.name, (char*) msg.value);
+                init_property_set((char*) msg.name, (char*) msg.value);
             } else {
                 ERROR("sys_prop: permission denied uid:%d  name:%s\n",
                       cr.uid, msg.name);
@@ -429,7 +417,7 @@ static void load_properties(char *data, const char *filter)
                 }
             }
 
-            property_set(key, value);
+            init_property_set(key, value);
         }
     }
 }
@@ -498,7 +486,7 @@ static void load_persistent_properties()
             length = read(fd, value, sizeof(value) - 1);
             if (length >= 0) {
                 value[length] = 0;
-                property_set(entry->d_name, value);
+                init_property_set(entry->d_name, value);
             } else {
                 ERROR("Unable to read persistent property file %s errno: %d\n",
                       entry->d_name, errno);
@@ -533,7 +521,7 @@ static void load_override_properties() {
     char debuggable[PROP_VALUE_MAX];
     int ret;
 
-    ret = property_get("ro.debuggable", debuggable);
+    ret = init_property_get("ro.debuggable", debuggable);
     if (ret && (strcmp(debuggable, "1") == 0)) {
         load_properties_from_file(PROP_PATH_LOCAL_OVERRIDE, NULL);
     }

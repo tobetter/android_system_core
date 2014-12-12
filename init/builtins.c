@@ -544,12 +544,12 @@ int do_mount_all(int nargs, char **args)
     }
 
     if (ret == FS_MGR_MNTALL_DEV_NEEDS_ENCRYPTION) {
-        property_set("vold.decrypt", "trigger_encryption");
+        init_property_set("vold.decrypt", "trigger_encryption");
     } else if (ret == FS_MGR_MNTALL_DEV_MIGHT_BE_ENCRYPTED) {
-        property_set("ro.crypto.state", "encrypted");
-        property_set("vold.decrypt", "trigger_default_encryption");
+        init_property_set("ro.crypto.state", "encrypted");
+        init_property_set("vold.decrypt", "trigger_default_encryption");
     } else if (ret == FS_MGR_MNTALL_DEV_NOT_ENCRYPTED) {
-        property_set("ro.crypto.state", "unencrypted");
+        init_property_set("ro.crypto.state", "unencrypted");
         /* If fs_mgr determined this is an unencrypted device, then trigger
          * that action.
          */
@@ -618,7 +618,7 @@ int do_setprop(int nargs, char **args)
         ERROR("cannot expand '%s' while assigning to '%s'\n", value, name);
         return -EINVAL;
     }
-    property_set(name, prop_val);
+    init_property_set(name, prop_val);
     return 0;
 }
 

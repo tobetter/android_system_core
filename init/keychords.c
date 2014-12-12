@@ -100,7 +100,7 @@ void handle_keychord()
     __u16 id;
 
     // Only handle keychords if adb is enabled.
-    property_get("init.svc.adbd", adb_enabled);
+    init_property_get("init.svc.adbd", adb_enabled);
     ret = read(keychord_fd, &id, sizeof(id));
     if (ret != sizeof(id)) {
         ERROR("could not read keychord id\n");

@@ -270,7 +270,7 @@ int expand_props(char *dst, const char *src, int dst_size)
             goto err;
         }
 
-        prop_val_len = property_get(prop, prop_val);
+        prop_val_len = init_property_get(prop, prop_val);
         if (!prop_val_len) {
             ERROR("property '%s' doesn't exist while expanding '%s'\n",
                   prop, src);
@@ -558,7 +558,7 @@ void queue_all_property_triggers()
                     prop_name[length] = 0;
 
                     /* does the property exist, and match the trigger value? */
-                    ret = property_get(prop_name, value);
+                    ret = init_property_get(prop_name, value);
                     if (ret > 0 && (!strcmp(equals + 1, value) ||
                                     !strcmp(equals + 1, "*"))) {
                         action_add_queue_tail(act);

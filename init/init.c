@@ -84,7 +84,7 @@ void notify_service_state(const char *name, const char *state)
     if ((len + 10) > PROP_NAME_MAX)
         return;
     snprintf(pname, sizeof(pname), "init.svc.%s", name);
-    property_set(pname, state);
+    init_property_set(pname, state);
 }
 
 static int have_console;
@@ -722,7 +722,7 @@ static void import_kernel_nv(char *name, int for_emulator)
         int len = snprintf( buff, sizeof(buff), "ro.kernel.%s", name );
 
         if (len < (int)sizeof(buff))
-            property_set( buff, value );
+            init_property_set( buff, value );
         return;
     }
 
@@ -735,7 +735,7 @@ static void import_kernel_nv(char *name, int for_emulator)
 
         cnt = snprintf(prop, sizeof(prop), "ro.boot.%s", boot_prop_name);
         if (cnt < PROP_NAME_MAX)
-            property_set(prop, value);
+            init_property_set(prop, value);
     }
 }
 
@@ -757,38 +757,38 @@ static void export_kernel_boot_props(void)
     };
 
     for (i = 0; i < ARRAY_SIZE(prop_map); i++) {
-        ret = property_get(prop_map[i].src_prop, tmp);
+        ret = init_property_get(prop_map[i].src_prop, tmp);
         if (ret > 0)
-            property_set(prop_map[i].dest_prop, tmp);
+            init_property_set(prop_map[i].dest_prop, tmp);
         else
-            property_set(prop_map[i].dest_prop, prop_map[i].def_val);
+            init_property_set(prop_map[i].dest_prop, prop_map[i].def_val);
     }
 
-    ret = property_get("ro.boot.console", tmp);
+    ret = init_property_get("ro.boot.console", tmp);
     if (ret)
         strlcpy(console, tmp, sizeof(console));
 
     /* save a copy for init's usage during boot */
-    property_get("ro.bootmode", tmp);
+    init_property_get("ro.bootmode", tmp);
     strlcpy(bootmode, tmp, sizeof(bootmode));
 
     /* if this was given on kernel command line, override what we read
      * before (e.g. from /proc/cpuinfo), if anything */
-    ret = property_get("ro.boot.hardware", tmp);
+    ret = init_property_get("ro.boot.hardware", tmp);
     if (ret)
         strlcpy(hardware, tmp, sizeof(hardware));
-    property_set("ro.hardware", hardware);
+    init_property_set("ro.hardware", hardware);
 
     snprintf(tmp, PROP_VALUE_MAX, "%d", revision);
-    property_set("ro.revision", tmp);
+    init_property_set("ro.revision", tmp);
 
     /* TODO: these are obsolete. We should delete them */
     if (!strcmp(bootmode,"factory"))
-        property_set("ro.factorytest", "1");
+        init_property_set("ro.factorytest", "1");
     else if (!strcmp(bootmode,"factory2"))
-        property_set("ro.factorytest", "2");
+        init_property_set("ro.factorytest", "2");
     else
-        property_set("ro.factorytest", "0");
+        init_property_set("ro.factorytest", "0");
 }
 
 static void process_kernel_cmdline(void)
@@ -899,7 +899,7 @@ static bool selinux_is_disabled(void)
         return true;
     }
 
-    if ((property_get("ro.boot.selinux", tmp) != 0) && (strcmp(tmp, "disabled") == 0)) {
+    if ((init_property_get("ro.boot.selinux", tmp) != 0) && (strcmp(tmp, "disabled") == 0)) {
         /* SELinux is compiled into the kernel, but we've been told to disable it. */
         return true;
     }
@@ -913,7 +913,7 @@ static bool selinux_is_enforcing(void)
 #ifdef ALLOW_DISABLE_SELINUX
     char tmp[PROP_VALUE_MAX];
 
-    if (property_get("ro.boot.selinux", tmp) == 0) {
+    if (init_property_get("ro.boot.selinux", tmp) == 0) {
         /* Property is not set.  Assume enforcing */
         return true;
     }
@@ -1002,7 +1002,7 @@ static void selinux_initialize(void)
 static int aml_firstbootinit()
 {
     char is_firstboot[PROP_VALUE_MAX] = {0};
-    property_get("ro.firstboot", is_firstboot);
+    init_property_get("ro.firstboot", is_firstboot);
     if (strncmp(is_firstboot, "1", 1) == 0) {
         ERROR("aml-firstboot-init insert aml-firstboot-init\n");
         action_for_each_trigger("aml-firstboot-init", action_add_queue_tail);
