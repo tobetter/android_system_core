@@ -1307,8 +1307,10 @@ static inline bool audio_is_valid_format(audio_format_t format)
     case AUDIO_FORMAT_HE_AAC_V2:
     case AUDIO_FORMAT_VORBIS:
     case AUDIO_FORMAT_OPUS:
+    case AUDIO_FORMAT_DTS:
     case AUDIO_FORMAT_AC3:
     case AUDIO_FORMAT_E_AC3:
+    case AUDIO_FORMAT_TRUEHD:
         return true;
     default:
         return false;
@@ -1318,6 +1320,13 @@ static inline bool audio_is_valid_format(audio_format_t format)
 static inline bool audio_is_linear_pcm(audio_format_t format)
 {
     return ((format & AUDIO_FORMAT_MAIN_MASK) == AUDIO_FORMAT_PCM);
+}
+static inline bool audio_is_raw_data(audio_format_t format)
+{
+    return (((format & AUDIO_FORMAT_MAIN_MASK) == AUDIO_FORMAT_DTS) ||
+		 ((format & AUDIO_FORMAT_MAIN_MASK) == AUDIO_FORMAT_AC3) ||
+		 ((format & AUDIO_FORMAT_MAIN_MASK) == AUDIO_FORMAT_E_AC3)||
+                 ((format & AUDIO_FORMAT_MAIN_MASK) == AUDIO_FORMAT_TRUEHD));
 }
 
 static inline size_t audio_bytes_per_sample(audio_format_t format)
