@@ -555,7 +555,7 @@ service ril-daemon /system/bin/rild
 service surfaceflinger /system/bin/surfaceflinger
     class core
     user system
-    group graphics drmrpc
+    group graphics drmrpc system
     onrestart restart zygote
 
 service drm /system/bin/drmserver
