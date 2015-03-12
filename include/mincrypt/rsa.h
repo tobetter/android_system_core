@@ -34,22 +34,38 @@
 extern "C" {
 #endif
 
-#define RSANUMBYTES 256           /* 2048 bit key length */
+#define RSAKEYSIZE 2048
+#define RSANUMBYTES ((RSAKEYSIZE)/8)   /* 2048 bit key length */
 #define RSANUMWORDS (RSANUMBYTES / sizeof(uint32_t))
 
+#define MAXRSAKEYSIZE 4096
+#define MAXRSANUMBYTES ((MAXRSAKEYSIZE)/8)
+#define MAXRSANUMWORDS (MAXRSANUMBYTES / sizeof(uint32_t))
+
 typedef struct RSAPublicKey {
+    int len;                  /* Length of n[] in number of uint32_t */
+    uint32_t n0inv;           /* -1 / n[0] mod 2^32 */
+    uint32_t n[MAXRSANUMWORDS];  /* modulus as little endian array */
+    uint32_t rr[MAXRSANUMWORDS]; /* R^2 as little endian array */
+    int exponent;             /* 3 or 65537 */
+} RSAPublicKey;
+
+typedef struct RSAPublicKey2048 {
     int len;                  /* Length of n[] in number of uint32_t */
     uint32_t n0inv;           /* -1 / n[0] mod 2^32 */
     uint32_t n[RSANUMWORDS];  /* modulus as little endian array */
     uint32_t rr[RSANUMWORDS]; /* R^2 as little endian array */
     int exponent;             /* 3 or 65537 */
-} RSAPublicKey;
+} RSAPublicKey2048;
 
 int RSA_verify(const RSAPublicKey *key,
                const uint8_t* signature,
                const int len,
                const uint8_t* hash,
                const int hash_len);
+
+void RSA_key_convert2048(const RSAPublicKey2048 *key,
+                         RSAPublicKey *new_key);
 
 #ifdef __cplusplus
 }

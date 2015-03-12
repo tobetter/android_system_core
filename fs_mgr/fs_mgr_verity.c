@@ -51,6 +51,7 @@ static RSAPublicKey *load_key(char *path)
 {
     FILE *f;
     RSAPublicKey *key;
+    int key_len_words = 0;
 
     key = malloc(sizeof(RSAPublicKey));
     if (!key) {
@@ -72,7 +73,8 @@ static RSAPublicKey *load_key(char *path)
         return NULL;
     }
 
-    if (key->len != RSANUMWORDS) {
+    key_len_words = key->len;
+    if (key_len_words != 32 && key_len_words != 64 && key_len_words != 128) {
         ERROR("Invalid key length %d\n", key->len);
         fclose(f);
         free(key);
@@ -102,7 +104,7 @@ static int verify_table(char *signature, char *table, int table_length)
     // verify the result
     if (!RSA_verify(key,
                     (uint8_t*) signature,
-                    RSANUMBYTES,
+                    key->len * sizeof(uint32_t),
                     (uint8_t*) hash_buf,
                     SHA256_DIGEST_SIZE)) {
         ERROR("Couldn't verify table.");
@@ -155,6 +157,8 @@ static int read_verity_metadata(char *block_device, char **signature, char **tab
     int protocol_version;
     int device;
     int retval = FS_MGR_SETUP_VERITY_FAIL;
+    RSAPublicKey *key;
+    int sig_len = 0;
     *signature = 0;
     *table = 0;
 
@@ -206,13 +210,17 @@ static int read_verity_metadata(char *block_device, char **signature, char **tab
         goto out;
     }
 
+    /* We load key here once for getting key length */
+    key = load_key(VERITY_TABLE_RSA_KEY);
+    sig_len = key->len * sizeof(uint32_t);
+
     // get the signature
-    *signature = (char*) malloc(RSANUMBYTES);
+    *signature = (char*) malloc(sig_len);
     if (!*signature) {
         ERROR("Couldn't allocate memory for signature!\n");
         goto out;
     }
-    if (TEMP_FAILURE_RETRY(read(device, *signature, RSANUMBYTES)) != RSANUMBYTES) {
+    if (TEMP_FAILURE_RETRY(read(device, *signature, sig_len)) != sig_len) {
         ERROR("Couldn't read signature from verity metadata!\n");
         goto out;
     }

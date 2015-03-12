@@ -28,6 +28,7 @@
 #include "mincrypt/rsa.h"
 #include "mincrypt/sha.h"
 #include "mincrypt/sha256.h"
+#include <string.h>
 
 // a[] -= mod
 static void subM(const RSAPublicKey* key,
@@ -96,9 +97,9 @@ static void montMul(const RSAPublicKey* key,
 // Input and output big-endian byte array in inout.
 static void modpow(const RSAPublicKey* key,
                    uint8_t* inout) {
-    uint32_t a[RSANUMWORDS];
-    uint32_t aR[RSANUMWORDS];
-    uint32_t aaR[RSANUMWORDS];
+    uint32_t a[MAXRSANUMWORDS];
+    uint32_t aR[MAXRSANUMWORDS];
+    uint32_t aaR[MAXRSANUMWORDS];
     uint32_t* aaa = 0;
     int i;
 
@@ -187,10 +188,22 @@ static const uint8_t sha_padding[RSANUMBYTES] = {
 
 // SHA-1 of PKCS1.5 signature sha_padding for 2048 bit, as above.
 // At the location of the bytes of the hash all 00 are hashed.
+static const uint8_t kExpectedPadShaRsa1024[SHA_DIGEST_SIZE] = {
+    0x92, 0x33, 0x69, 0xbc, 0xe6, 0xeb, 0xe6, 0x20,
+    0x5f, 0xd5, 0xc3, 0x75, 0x30, 0x8b, 0x3c, 0xdd,
+    0xae, 0x10, 0x4c, 0x23
+};
+
 static const uint8_t kExpectedPadShaRsa2048[SHA_DIGEST_SIZE] = {
     0xdc, 0xbd, 0xbe, 0x42, 0xd5, 0xf5, 0xa7, 0x2e,
     0x6e, 0xfc, 0xf5, 0x5d, 0xaf, 0x9d, 0xea, 0x68,
     0x7c, 0xfb, 0xf1, 0x67
+};
+
+static const uint8_t kExpectedPadShaRsa4096[SHA_DIGEST_SIZE] = {
+    0xcd, 0xab, 0x5f, 0x01, 0xf0, 0xbb, 0xfe, 0xbf,
+    0x9c, 0x6f, 0x9e, 0xfc, 0xc1, 0x00, 0x86, 0x9b,
+    0xda, 0x62, 0xd9, 0xe5
 };
 
 /*
@@ -232,11 +245,25 @@ static const uint8_t sha256_padding[RSANUMBYTES] = {
 
 // SHA-256 of PKCS1.5 signature sha256_padding for 2048 bit, as above.
 // At the location of the bytes of the hash all 00 are hashed.
+static const uint8_t kExpectedPadSha256Rsa1024[SHA256_DIGEST_SIZE] = {
+    0x0a, 0x54, 0x5b, 0x36, 0x2f, 0x4c, 0xa7, 0x13,
+    0xa7, 0x1d, 0x65, 0x33, 0xcd, 0xf9, 0x86, 0x48,
+    0x8b, 0x53, 0x8b, 0x47, 0x5a, 0xad, 0xb3, 0x0d,
+    0x12, 0x95, 0x98, 0x30, 0xd3, 0x84, 0xd7, 0x3e
+};
+
 static const uint8_t kExpectedPadSha256Rsa2048[SHA256_DIGEST_SIZE] = {
     0xab, 0x28, 0x8d, 0x8a, 0xd7, 0xd9, 0x59, 0x92,
     0xba, 0xcc, 0xf8, 0x67, 0x20, 0xe1, 0x15, 0x2e,
     0x39, 0x8d, 0x80, 0x36, 0xd6, 0x6f, 0xf0, 0xfd,
     0x90, 0xe8, 0x7d, 0x8b, 0xe1, 0x7c, 0x87, 0x59,
+};
+
+static const uint8_t kExpectedPadSha256Rsa4096[SHA256_DIGEST_SIZE] = {
+    0x25, 0xee, 0x85, 0x2d, 0xc6, 0x04, 0x02, 0xb5,
+    0xda, 0xeb, 0xfc, 0xc1, 0x53, 0xd6, 0x4c, 0x3a,
+    0x56, 0x43, 0x10, 0xec, 0x68, 0x4f, 0xd4, 0x21,
+    0x61, 0xd2, 0x66, 0x53, 0x6e, 0x0b, 0x54, 0xda
 };
 
 // Verify a 2048-bit RSA PKCS1.5 signature against an expected hash.
@@ -251,15 +278,18 @@ int RSA_verify(const RSAPublicKey *key,
                const int len,
                const uint8_t *hash,
                const int hash_len) {
-    uint8_t buf[RSANUMBYTES];
+    uint8_t buf[MAXRSANUMBYTES];
     int i;
-    const uint8_t* padding_hash;
+    const uint8_t* padding_hash = kExpectedPadShaRsa2048;
+    int32_t key_len_words = key->len;
+    int32_t key_bytes = key->len * sizeof(uint32_t);
+    int32_t key_bits = key->len * sizeof(uint32_t) * 8;
 
-    if (key->len != RSANUMWORDS) {
+    if (key_len_words != 32 && key_len_words != 64 && key_len_words != 128) {
         return 0;  // Wrong key passed in.
     }
 
-    if (len != sizeof(buf)) {
+    if (len != key_bytes) {
         return 0;  // Wrong input length.
     }
 
@@ -286,11 +316,21 @@ int RSA_verify(const RSAPublicKey *key,
     // Hash resulting buf, in-place.
     switch (hash_len) {
         case SHA_DIGEST_SIZE:
-            padding_hash = kExpectedPadShaRsa2048;
+            if (key_bits == 1024)
+                    padding_hash = kExpectedPadShaRsa1024;
+            else if (key_bits == 2048)
+                    padding_hash = kExpectedPadShaRsa2048;
+            else if (key_bits == 4096)
+                    padding_hash = kExpectedPadShaRsa4096;
             SHA_hash(buf, len, buf);
             break;
         case SHA256_DIGEST_SIZE:
-            padding_hash = kExpectedPadSha256Rsa2048;
+            if (key_bits == 1024)
+                    padding_hash = kExpectedPadSha256Rsa1024;
+            else if (key_bits == 2048)
+                    padding_hash = kExpectedPadSha256Rsa2048;
+            else if (key_bits == 4096)
+                    padding_hash = kExpectedPadSha256Rsa4096;
             SHA256_hash(buf, len, buf);
             break;
         default:
@@ -306,3 +346,14 @@ int RSA_verify(const RSAPublicKey *key,
 
     return 1;  // All checked out OK.
 }
+
+void RSA_key_convert2048(const RSAPublicKey2048 *key,
+                         RSAPublicKey *new_key) {
+        memset(new_key, 0, sizeof(RSAPublicKey));
+        new_key->len = key->len;
+        new_key->n0inv = key->n0inv;
+        memcpy(new_key->n, key->n, RSANUMBYTES);
+        memcpy(new_key->rr, key->rr, RSANUMBYTES);
+        new_key->exponent = key->exponent;
+}
+
