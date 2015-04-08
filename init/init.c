@@ -57,6 +57,7 @@
 #include "util.h"
 #include "ueventd.h"
 #include "watchdogd.h"
+#include "ubootenv.h"
 
 struct selabel_handle *sehandle;
 struct selabel_handle *sehandle_prop;
@@ -72,6 +73,7 @@ static char bootmode[32];
 static char hardware[32];
 static unsigned revision = 0;
 static char qemu[32];
+static bool instabooting = false;
 
 static struct action *cur_action = NULL;
 static struct command *cur_command = NULL;
@@ -424,6 +426,12 @@ void service_restart(struct service *svc)
 
 void property_changed(const char *name, const char *value)
 {
+    if (strcmp(name, "sys.ubootenv.reload") == 0
+          && (strcmp(value, "0") == 0)){
+        bootenv_reinit();
+        init_property_set("sys.ubootenv.reload","1");
+    }
+
     if (property_triggers_enabled)
         queue_property_triggers(name, value);
 }
@@ -999,6 +1007,23 @@ static void selinux_initialize(void)
     security_setenforce(is_enforcing);
 }
 
+void instaboot_initialize(void)
+{
+    const char* sys_file = "/sys/power/boot_type";
+    char buf[32]={0};
+
+    FILE* file = fopen(sys_file, "rb");
+    if (file == NULL) {
+        ERROR("Failed to open %s(%s)", sys_file, strerror(errno));
+        return;
+    }
+    size_t len = fread(buf, 1, 32, file);
+    INFO("instaboot_initialize (%s)\n", buf);
+    if (!strncmp(buf, "instabooting", strlen("instabooting"))) {
+        instabooting = true;
+    }
+}
+
 static int aml_firstbootinit()
 {
     char is_firstboot[PROP_VALUE_MAX] = {0};
@@ -1071,7 +1096,9 @@ int main(int argc, char **argv)
     cb.func_audit = audit_callback;
     selinux_set_callback(SELINUX_CB_AUDIT, cb);
 
-    selinux_initialize();
+    instaboot_initialize();
+    if (!instabooting)
+        selinux_initialize();
     /* These directories were necessarily created before initial policy load
      * and therefore need their security context restored to the proper value.
      * This must happen before /dev is populated by ueventd.
