@@ -231,7 +231,7 @@ int dhcp_do_request(const char *interface,
     }
 
     /* Wait for the daemon to return a result */
-    if (wait_for_property(result_prop_name, NULL, 30) < 0) {
+    if (wait_for_property(result_prop_name, NULL, 60) < 0) {
         snprintf(errmsg, sizeof(errmsg), "%s", "Timed out waiting for DHCP to finish");
         return -1;
     }
