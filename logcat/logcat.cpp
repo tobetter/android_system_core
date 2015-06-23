@@ -841,7 +841,8 @@ int main(int argc, char **argv)
 
         if (ret == 0) {
             fprintf(stderr, "read: Unexpected EOF!\n");
-            exit(EXIT_FAILURE);
+            //exit(EXIT_FAILURE);
+            continue;
         }
 
         if (ret < 0) {

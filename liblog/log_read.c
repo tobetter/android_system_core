@@ -676,6 +676,13 @@ int android_logger_list_read(struct logger_list *logger_list,
         }
         /* NOTE: SOCK_SEQPACKET guarantees we read exactly one full entry */
         ret = recv(logger_list->sock, log_msg, LOGGER_ENTRY_MAX_LEN, 0);
+
+        /*server had closed it, need reconnect*/
+        if (0 == ret) {
+            close(logger_list->sock);
+            logger_list->sock = -1;
+        }
+
         e = errno;
         if (logger_list->mode & O_NONBLOCK) {
             if ((ret == 0) || (e == EINTR)) {
