@@ -404,6 +404,11 @@ on property:sys.sysctl.extra_free_kbytes=*
 
 ## Daemon processes to be run by init.
 ##
+
+service display /system/bin/set_display_mode.sh
+    class core
+    oneshot
+
 service ueventd /sbin/ueventd
     class core
     critical
@@ -444,6 +449,9 @@ service adbd /sbin/adbd
 on property:ro.kernel.qemu=1
     start adbd
 
+on property:init.svc.display=stopped
+    start surfaceflinger
+
 service servicemanager /system/bin/servicemanager
     class core
     user system
@@ -480,6 +488,7 @@ service surfaceflinger /system/bin/surfaceflinger
     class main
     user system
     group graphics drmrpc
+    disabled
     onrestart restart zygote
 
 service zygote /system/bin/app_process -Xzygote /system/bin --zygote --start-system-server
