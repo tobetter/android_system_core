@@ -965,7 +965,7 @@ int do_confirm_formated(int nargs, char **args) {
         if ( result != 0 ) {
             ERROR("do_confirm_formated mount fail,maybe firstboot, need format, try format now, dev:%s, mountpoint:%s\n", dev, mountpoint);
             int fd = -1;
-            result = make_ext4fs(dev, 0, mountpoint, NULL);
+            result = make_ext4fs(dev, 0, mountpoint, sehandle);
 
             if (result != 0) {
                 ERROR("do_confirm_formated mount make_extf4fs fail on %s, err[%s]\n", dev, strerror(errno));
