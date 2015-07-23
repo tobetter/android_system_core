@@ -29,6 +29,9 @@
 #include <time.h>
 #include <sys/swap.h>
 
+#include <selinux/selinux.h>
+#include <selinux/label.h>
+
 #include <linux/loop.h>
 #include <private/android_filesystem_config.h>
 #include <cutils/android_reboot.h>
@@ -350,9 +353,24 @@ void deal_patition_corrupt( struct fstab_rec * rec ) {
     else if ( strcmp(mountpoint, "/cache") == 0 ) { //if mount cache fail,then format the cache and mount cache again
         ERROR("deal_patition_corrupt mount cache fail,try format\n");
         int result = -1;
-        result = make_ext4fs(device, 0, mountpoint, NULL);
+        struct selabel_handle *sehandle;
+        struct selinux_opt seopts[] = {
+            { SELABEL_OPT_PATH, "/file_contexts" }
+        };
+
+        sehandle = selabel_open(SELABEL_CTX_FILE, seopts, 1);
+
+        if (!sehandle) {
+            ERROR("No file_contexts\n");
+        }
+
+        result = make_ext4fs(device, 0, mountpoint, sehandle);
         if (result != 0) {
             ERROR("deal_patition_corrupt format_volume: make_extf4fs failed on %s, err[%s]\n", device, strerror(errno) );
+        }
+
+        if (sehandle) {
+            selabel_close(sehandle);
         }
 
         //mount after format
@@ -420,9 +438,22 @@ void deal_cache_ro(struct fstab_rec * rec) {
 
     if ( umount(mount_point) == 0 ) {
         int result = -1;
-        result = make_ext4fs(blk_device, 0, mount_point, NULL);
+        struct selabel_handle *sehandle;
+        struct selinux_opt seopts[] = {
+            { SELABEL_OPT_PATH, "/file_contexts" }
+        };
+
+        sehandle = selabel_open(SELABEL_CTX_FILE, seopts, 1);
+
+        if (!sehandle) {
+            ERROR("No file_contexts\n");
+        }
+        result = make_ext4fs(blk_device, 0, mount_point, sehandle);
         if (result != 0) {
             ERROR("fs_mgr_mount_all check cache ro,format_volume: make_extf4fs failed on %s, err[%s]\n", blk_device, strerror(errno) );
+        }
+        if (sehandle) {
+            selabel_close(sehandle);
         }
 
         result = __mount( blk_device, mount_point, rec );
