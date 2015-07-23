@@ -1022,6 +1022,7 @@ void instaboot_initialize(void)
     if (!strncmp(buf, "instabooting", strlen("instabooting"))) {
         instabooting = true;
     }
+    fclose(file);
 }
 
 static int aml_firstbootinit()
@@ -1072,6 +1073,19 @@ int main(int argc, char **argv)
     mount("proc", "/proc", "proc", 0, NULL);
     mount("sysfs", "/sys", "sysfs", 0, NULL);
 
+    instaboot_initialize();
+    if (instabooting) {
+        init_parse_config_file("/instaboot.rc");
+        action_for_each_trigger("early-init", action_add_queue_tail);
+
+        for (;;) {
+            execute_one_command();
+            execute_one_command();
+            execute_one_command();
+            usleep(100000);
+        }
+    }
+
         /* indicate that booting is in progress to background fw loaders, etc */
     close(open("/dev/.booting", O_WRONLY | O_CREAT, 0000));
 
@@ -1096,9 +1110,7 @@ int main(int argc, char **argv)
     cb.func_audit = audit_callback;
     selinux_set_callback(SELINUX_CB_AUDIT, cb);
 
-    instaboot_initialize();
-    if (!instabooting)
-        selinux_initialize();
+    selinux_initialize();
     /* These directories were necessarily created before initial policy load
      * and therefore need their security context restored to the proper value.
      * This must happen before /dev is populated by ueventd.
