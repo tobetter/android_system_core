@@ -57,6 +57,8 @@ static int auth_enabled = 0;
 #if !ADB_HOST
 static const char *adb_device_banner = "device";
 static const char *root_seclabel = NULL;
+// For recovery adbd.
+int isRecoveryMode = 0;
 #endif
 
 void fatal(const char *fmt, ...)
@@ -1261,6 +1263,8 @@ static void drop_capabilities_bounding_set_if_needed() {
 }
 
 static int should_drop_privileges() {
+    if (isRecoveryMode) return 0;
+
 #ifndef ALLOW_ADBD_ROOT
     return 1;
 #else /* ALLOW_ADBD_ROOT */
@@ -1712,6 +1716,9 @@ int main(int argc, char **argv)
             break;
         case 'b':
             adb_device_banner = optarg;
+            if (!strcmp(adb_device_banner, "recovery")) {
+                isRecoveryMode = 1;
+            }
             break;
         default:
             break;

@@ -303,6 +303,7 @@ static int create_subproc_raw(const char *cmd, const char *arg0, const char *arg
 #define SHELL_COMMAND "/bin/sh"
 #else
 #define SHELL_COMMAND "/system/bin/sh"
+#define SPECIFIED_SHELL_COMMAND "/sbin/sh"
 #endif
 
 #if !ADB_HOST
@@ -353,10 +354,18 @@ static int create_subproc_thread(const char *name, const subproc_mode mode)
 
     switch (mode) {
     case SUBPROC_PTY:
-        ret_fd = create_subproc_pty(SHELL_COMMAND, arg0, arg1, &pid);
+        if (isRecoveryMode) {
+            ret_fd = create_subproc_pty(SPECIFIED_SHELL_COMMAND, arg0, arg1, &pid);
+        } else {
+            ret_fd = create_subproc_pty(SHELL_COMMAND, arg0, arg1, &pid);
+        }
         break;
     case SUBPROC_RAW:
-        ret_fd = create_subproc_raw(SHELL_COMMAND, arg0, arg1, &pid);
+        if (isRecoveryMode) {
+            ret_fd = create_subproc_raw(SPECIFIED_SHELL_COMMAND, arg0, arg1, &pid);
+        } else {
+            ret_fd = create_subproc_raw(SHELL_COMMAND, arg0, arg1, &pid);
+        }
         break;
     default:
         fprintf(stderr, "invalid subproc_mode %d\n", mode);

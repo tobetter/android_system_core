@@ -415,4 +415,8 @@ typedef enum {
 int sendfailmsg(int fd, const char *reason);
 int handle_host_request(char *service, transport_type ttype, char* serial, int reply_fd, asocket *s);
 
+#if !ADB_HOST
+extern int isRecoveryMode;
+#endif
+
 #endif
