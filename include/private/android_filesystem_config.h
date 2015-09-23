@@ -279,6 +279,15 @@ static inline void fs_config(const char *path, int dir,
         path++;
     }
 
+    /* XXX: ODROID's Android root file system contains the file of 'system'
+     * partition itself, not like regular Android devices what mount 'system'
+     * partition to '/system' of their root file system, 'boot.img'. Hence
+     * original Android file system permission need to be tweaked to have proper
+     * file permissions.
+     */
+    if (!strncmp(path, "system/system/", 14))
+        path += 7;
+
     pc = dir ? android_dirs : android_files;
     plen = strlen(path);
     for(; pc->prefix; pc++){
