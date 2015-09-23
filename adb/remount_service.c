@@ -95,6 +95,13 @@ static int remount(const char* dir, int* dir_ro)
     if (!dev)
         return -1;
 
+#if defined(ODROID)
+    if (strcmp(dev, "rootfs") == 0 || strcmp(dev, "/dev/root") == 0) {
+        free(dev);
+        dev = strdup("/");
+    }
+#endif
+
     fd = unix_open(dev, O_RDONLY | O_CLOEXEC);
     if (fd < 0)
         return -1;
@@ -147,7 +154,16 @@ void remount_service(int fd, void *cookie)
         write_string(fd, buffer);
     }
 
+#if defined(ODROID)
+    /* XXX: ODROID-C2 have its root file system contains the files what are
+     * originally in the 'system' partition, remounting 'system' mount
+     * won't work by 'adb remount' command. Hence, ODROID board hack the command
+     * 'adb remount' to mount the whole root file system.
+     */
+    if (remount("/", &system_ro)) {
+#else
     if (remount("/system", &system_ro)) {
+#endif
         snprintf(buffer, sizeof(buffer), "remount of system failed: %s\n",strerror(errno));
         write_string(fd, buffer);
     }
