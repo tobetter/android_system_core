@@ -62,7 +62,8 @@ LOCAL_SRC_FILES_mips := $(PIXELFLINGER_SRC_FILES_mips)
 LOCAL_CFLAGS := $(PIXELFLINGER_CFLAGS)
 LOCAL_EXPORT_C_INCLUDE_DIRS := $(LOCAL_PATH)/include
 LOCAL_C_INCLUDES += $(LOCAL_EXPORT_C_INCLUDE_DIRS)
-LOCAL_SHARED_LIBRARIES := libcutils liblog
+LOCAL_SHARED_LIBRARIES := libcutils liblog libutils
+LOCAL_C_INCLUDES += external/safe-iop/include
 
 # Really this should go away entirely or at least not depend on
 # libhardware, but this at least gets us built.
