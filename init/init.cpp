@@ -807,11 +807,11 @@ static void export_kernel_boot_props() {
         const char *dst_prop;
         const char *default_value;
     } prop_map[] = {
-        { "ro.boot.serialno",   "ro.serialno",   "", },
+        { "ro.boot.serialno",   "ro.serialno",   "gxbaby-905", },
         { "ro.boot.mode",       "ro.bootmode",   "unknown", },
         { "ro.boot.baseband",   "ro.baseband",   "unknown", },
         { "ro.boot.bootloader", "ro.bootloader", "unknown", },
-        { "ro.boot.hardware",   "ro.hardware",   "unknown", },
+        { "ro.boot.hardware",   "ro.hardware",   "amlogic", },
         { "ro.boot.revision",   "ro.revision",   "0", },
         { "ro.boot.firstboot",  "ro.firstboot",  "0"},
     };
@@ -908,6 +908,7 @@ static selinux_enforcing_status selinux_status_from_cmdline() {
 
 static bool selinux_is_disabled(void)
 {
+/*
     if (ALLOW_DISABLE_SELINUX) {
         if (access("/sys/fs/selinux", F_OK) != 0) {
             // SELinux is not compiled into the kernel, or has been disabled
@@ -918,6 +919,8 @@ static bool selinux_is_disabled(void)
     }
 
     return false;
+    */
+    return true;
 }
 
 static bool selinux_is_enforcing(void)

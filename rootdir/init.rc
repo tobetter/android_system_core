@@ -217,7 +217,7 @@ on post-fs
     # Mount shared so changes propagate into child namespaces
     mount rootfs rootfs / shared rec
     # Mount default storage into root namespace
-    mount none /mnt/runtime/default /storage slave bind rec
+    #mount none /mnt/runtime/default /storage slave bind rec
 
     # We chown/chmod /cache again so because mount is run as root + defaults
     chown system cache /cache
