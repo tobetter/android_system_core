@@ -61,6 +61,7 @@ static struct flag_list mount_flags[] = {
 static struct flag_list fs_mgr_flags[] = {
     { "wait",        MF_WAIT },
     { "check",       MF_CHECK },
+    { "resize",      MF_RESIZE },
     { "encryptable=",MF_CRYPT },
     { "forceencrypt=",MF_FORCECRYPT },
     { "fileencryption",MF_FILEENCRYPTION },
