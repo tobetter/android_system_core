@@ -4,13 +4,26 @@ LOCAL_PATH:= $(call my-dir)
 
 # --
 
-ifneq (,$(filter userdebug eng,$(TARGET_BUILD_VARIANT)))
+ifneq (,$(filter userdebug eng user,$(TARGET_BUILD_VARIANT)))
 init_options += -DALLOW_LOCAL_PROP_OVERRIDE=1 -DALLOW_DISABLE_SELINUX=1
 else
 init_options += -DALLOW_LOCAL_PROP_OVERRIDE=0 -DALLOW_DISABLE_SELINUX=0
 endif
 
 init_options += -DLOG_UEVENTS=0
+
+ifeq ($(strip $(TARGET_BOARD_PLATFORM)), rk3288)
+	init_options += -DTARGET_BOARD_PLATFORM_RK3288
+endif
+ifeq ($(strip $(TARGET_BOARD_PLATFORM)), sofia3gr)
+	init_options += -DTARGET_BOARD_PLATFORM_SOFIA3GR
+endif
+ifeq ($(strip $(TARGET_BOARD_PLATFORM)), rk3368)
+	init_options += -DTARGET_BOARD_PLATFORM_RK3368
+endif
+ifeq ($(strip $(TARGET_BOARD_PLATFORM)), rk312x)
+	init_options += -DTARGET_BOARD_PLATFORM_RK312x
+endif
 
 init_cflags += \
     $(init_options) \
