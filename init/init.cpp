@@ -69,6 +69,8 @@ struct selabel_handle *sehandle_prop;
 
 static int property_triggers_enabled = 0;
 
+static char bootmode[32];
+static char hardware[32];
 static char qemu[32];
 
 static struct action *cur_action = NULL;
@@ -793,7 +795,28 @@ static void import_kernel_nv(char *name, bool for_emulator)
     }
 }
 
+static void symlink_fstab() {
+    char fstab_path[255] = "/fstab.";
+    char fstab_default_path[50] = "/fstab.";
+    int ret = -1;
+
+    //such as: fstab.rk30board.bootmode.unknown
+    strcat(fstab_path, hardware);
+    strcat(fstab_path, ".bootmode.");
+    strcat(fstab_path, bootmode);
+    
+    strcat(fstab_default_path, hardware);
+    
+    ret = symlink(fstab_path, fstab_default_path);
+    if (ret < 0) {
+        ERROR("%s : failed", __func__);
+    }
+}
+
 static void export_kernel_boot_props() {
+    char tmp[PROP_VALUE_MAX];
+    int ret;
+
     struct {
         const char *src_prop;
         const char *dst_prop;
@@ -811,6 +834,19 @@ static void export_kernel_boot_props() {
         int rc = property_get(prop_map[i].src_prop, value);
         property_set(prop_map[i].dst_prop, (rc > 0) ? value : prop_map[i].default_value);
     }
+
+    /* save a copy for init's usage during boot */
+    property_get("ro.bootmode", tmp);
+    strlcpy(bootmode, tmp, sizeof(bootmode));
+
+    /* if this was given on kernel command line, override what we read
+     * before (e.g. from /proc/cpuinfo), if anything */
+    ret = property_get("ro.boot.hardware", tmp);
+    if (ret)
+        strlcpy(hardware, tmp, sizeof(hardware));
+    property_set("ro.hardware", hardware);
+
+    symlink_fstab();
 }
 
 static void process_kernel_dt(void)
