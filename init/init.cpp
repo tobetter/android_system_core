@@ -1041,9 +1041,6 @@ static void rk_312x_set_cpu(void)
                 can_set_cpu = true;
             }
             // ERROR("available_frequencies %s \n",buf);
-                                                                                                                                                                                   1100,9        75%
-            }
-            // ERROR("available_frequencies %s \n",buf);
         }
         close(fd);
     }else{
