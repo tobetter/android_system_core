@@ -485,6 +485,29 @@ int do_mount_all(int nargs, char **args)
     return ret;
 }
 
+static int set_mem_management_thresh()
+{
+    int thresh = 0;
+    char path[] = "proc/sys/vm/mem_management_thresh";
+    char buffer[32];
+    uint64_t total;
+
+    total = sysconf(_SC_PHYS_PAGES);
+    total *= sysconf(_SC_PAGESIZE);
+    thresh = total / 1024;
+    if (thresh < 512 * 1024) {
+        thresh = 2048;
+    } else {
+        thresh = 4096;
+    }
+
+    sprintf(buffer, "%d", thresh);
+    INFO("set mem management thresh to %s\n", buffer);
+    write_file(path, buffer);
+
+    return 0;
+}
+
 int do_swapon_all(int nargs, char **args)
 {
     struct fstab *fstab;
@@ -493,6 +516,8 @@ int do_swapon_all(int nargs, char **args)
     fstab = fs_mgr_read_fstab(args[1]);
     ret = fs_mgr_swapon_all(fstab);
     fs_mgr_free_fstab(fstab);
+
+    set_mem_management_thresh();
 
     return ret;
 }

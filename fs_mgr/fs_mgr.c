@@ -914,6 +914,11 @@ int fs_mgr_swapon_all(struct fstab *fstab)
         NULL
     };
 
+    char *mkfs_argv[2] = {
+        "/system/bin/make_ext4fs",
+        NULL
+    };
+
     if (!fstab) {
         return -1;
     }
@@ -938,6 +943,7 @@ int fs_mgr_swapon_all(struct fstab *fstab)
                 ret = -1;
                 continue;
             }
+            INFO("zram size is %d\n", fstab->recs[i].zram_size);
             fprintf(zram_fp, "%d\n", fstab->recs[i].zram_size);
             fclose(zram_fp);
         }
@@ -968,6 +974,21 @@ int fs_mgr_swapon_all(struct fstab *fstab)
         err = swapon(fstab->recs[i].blk_device, flags);
         if (err) {
             ERROR("swapon failed for %s\n", fstab->recs[i].blk_device);
+            ret = -1;
+        }
+
+        mkfs_argv[1] = fstab->recs[i].blk_device;
+        err = android_fork_execvp_ext(ARRAY_SIZE(mkfs_argv), mkfs_argv,
+                                      &status, true, LOG_KLOG, false, NULL);
+        if (err) {
+            ERROR("mkfs failed for %s, error:%d\n", fstab->recs[i].blk_device, err);
+            ret = -1;
+            continue;
+        }
+
+        err = mount(fstab->recs[i].blk_device, fstab->recs[i].mount_point, "ext4", 0, NULL);
+        if (err) {
+            ERROR("mount swap failed error: %d\n", err);
             ret = -1;
         }
     }

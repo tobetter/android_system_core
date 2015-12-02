@@ -78,6 +78,25 @@ static struct flag_list fs_mgr_flags[] = {
     { 0,             0 },
 };
 
+static unsigned int calculate_zram_size_auto()
+{
+    unsigned int zram_size = 0;
+    uint64_t total;
+
+    total  = sysconf(_SC_PHYS_PAGES);
+    total *= sysconf(_SC_PAGESIZE);
+
+    zram_size = total / 1024;
+
+    if (zram_size < 512*1024) {
+        zram_size = 256*1024*1024;
+    } else {
+        zram_size = 500*1024*1024;
+    }
+
+    return zram_size;
+}
+
 static uint64_t calculate_zram_size(unsigned int percentage)
 {
     uint64_t total;
@@ -172,12 +191,16 @@ static int parse_flags(char *flags, struct flag_list *fl,
                 } else if ((fl[i].flag == MF_SWAPPRIO) && flag_vals) {
                     flag_vals->swap_prio = strtoll(strchr(p, '=') + 1, NULL, 0);
                 } else if ((fl[i].flag == MF_ZRAMSIZE) && flag_vals) {
-                    int is_percent = !!strrchr(p, '%');
-                    unsigned int val = strtoll(strchr(p, '=') + 1, NULL, 0);
-                    if (is_percent)
-                        flag_vals->zram_size = calculate_zram_size(val);
-                    else
-                        flag_vals->zram_size = val;
+                    if (strstr(p, "auto")) {
+                        flag_vals->zram_size = calculate_zram_size_auto();
+                    } else {
+                        int is_percent = !!strrchr(p, '%');
+                        unsigned int val = strtoll(strchr(p, '=') + 1, NULL, 0);
+                        if (is_percent)
+                            flag_vals->zram_size = calculate_zram_size(val);
+                        else
+                            flag_vals->zram_size = val;
+                    }
                 }
                 break;
             }
