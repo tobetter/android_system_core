@@ -28,6 +28,7 @@
 #include <sys/mman.h>
 #include <sys/socket.h>
 #include <sys/types.h>
+#include <sys/stat.h>
 #include <unistd.h>
 
 #include <cutils/sockets.h>
@@ -293,6 +294,158 @@ static void cmd_procremove(int pid) {
     kill_lasttime = 0;
 }
 
+static long getMemoryInfo(const char* const sums[], const size_t sumsLen[], size_t num) {
+    int fd = open("/proc/meminfo", O_RDONLY);
+    if (fd < 0) {
+        ALOGW("Unable to open /proc/meminfo");
+        return -1;
+    }
+
+    char buffer[256];
+    const int len = read(fd, buffer, sizeof(buffer)-1);
+    close(fd);
+
+    if (len < 0) {
+        ALOGW("Unable to read /proc/meminfo");
+        return -1;
+    }
+    buffer[len] = 0;
+
+    size_t numFound = 0;
+    long mem = 0;
+
+    char* p = buffer;
+    while (*p && numFound < num) {
+        int i = 0;
+        while (sums[i]) {
+            if (strncmp(p, sums[i], sumsLen[i]) == 0) {
+                p += sumsLen[i];
+                while (*p == ' ') p++;
+                char* num = p;
+                while (*p >= '0' && *p <= '9') p++;
+                if (*p != 0) {
+                    *p = 0;
+                    p++;
+                    if (*p == 0) p--;
+                }
+                mem += atoll(num) * 1024;
+                numFound++;
+                break;
+            }
+            i++;
+        }
+        p++;
+    }
+
+    return numFound > 0 ? mem : -1;
+}
+
+static void droidlogic_param() {
+    char* pConfig = NULL;
+
+    const char* const sums[] = { "MemTotal:", NULL };
+    const size_t sumsLen[] = { strlen("MemTotal:"), 0 };
+    long totalMem = getMemoryInfo(sums, sumsLen, 1);
+    // adjust lowmemorykiller config according to ddr size
+    if (totalMem > 1024*1024*1024) {//1GB
+        pConfig = "/system/etc/lowmemorykiller_2G.txt";
+    } else if (totalMem > 512*1024) {//512MB
+        pConfig = "/system/etc/lowmemorykiller.txt";
+    } else {
+        pConfig = "/system/etc/lowmemorykiller_512M.txt";
+    }
+
+    ALOGI("droidlogic lmk totalMem:%ldMB, config file: %s", totalMem/(1024*1024), pConfig);
+
+    long length = 0;
+    char* buffer = NULL;
+    int fd = open(pConfig, O_RDONLY);
+    if (fd < 0) {
+        ALOGE("Error opening file '%s', %s.", pConfig, strerror(errno));
+        return;
+    } else {
+        struct stat stat;
+        if (fstat(fd, &stat)) {
+            ALOGE("Error getting size of file '%s', %s.", pConfig, strerror(errno));
+        } else {
+            length = stat.st_size;
+            buffer = (char *)malloc(length);
+            ssize_t nrd = read(fd, buffer, length);
+            if (nrd < 0) {
+                ALOGE("Error reading file '%s', %s.", pConfig, strerror(errno));
+                free(buffer);
+                buffer = NULL;
+                return;
+            } else {
+                length = nrd;
+            }
+        }
+        close(fd);
+    }
+
+    //adj:0,2,4,6,9,15
+    //#need div for each element
+    //minfree:8192,10240,12288,22528,25600,26624
+    char lines[1024] = {0};
+    char *pCur = buffer;
+    char *pEnd = buffer + length;
+    while (pCur <= pEnd) {
+        //ALOGI("droidlogic lmk ch: %c", *pCur);
+        if (!strncmp(pCur, "adj:", strlen("adj:"))) {//adj line
+            char *tokenStart = pCur;
+            while (true) {
+                if ((*pCur == '\n') || (pCur >= pEnd)) {
+                    memset((void*)lines, 0 , 1024);
+                    strncpy((char *)lines, tokenStart, pCur - tokenStart);
+                    break;
+                }
+                pCur++;
+            }
+
+            ALOGI("droidlogic lmk adjConfigString: %s", lines);
+            int *pAdj = lowmem_adj;
+            int num = sscanf(lines, "adj:%d,%d,%d,%d,%d,%d", pAdj, pAdj+1, pAdj+2, pAdj+3, pAdj+4, pAdj+5);
+            if (MAX_TARGETS != num) {
+                ALOGE("droidlogic lmk config file adj attr error");
+                break;
+            }
+        }
+        else if (*pCur == '#') {//this is mark line, skip this
+            while (true) {
+                if ((*pCur == '\n') || (pCur >= pEnd))
+                    break;
+                pCur++;
+            }
+        }
+        else if (!strncmp(pCur, "minfree:", strlen("minfree:"))) {//minfree line
+            char *tokenStart = pCur;
+            while (true) {
+                if ((*pCur == '\n') || (pCur >= pEnd)) {
+                    memset((void*)lines, 0 , 1024);
+                    strncpy((char *)lines, tokenStart, pCur - tokenStart);
+                    break;
+                }
+                pCur++;
+            }
+
+            ALOGI("droidlogic lmk minfreeConfigString: %s", lines);
+            int *pAdj = lowmem_minfree;
+            int num = sscanf(lines, "minfree:%d,%d,%d,%d,%d,%d", pAdj, pAdj+1, pAdj+2, pAdj+3, pAdj+4, pAdj+5);
+            if (MAX_TARGETS != num) {
+                ALOGE("droidlogic lmk config file minfree attr error");
+                break;
+            }
+        }
+
+        pCur++;
+    }
+
+    if (NULL != buffer) {
+        free(buffer);
+        buffer = NULL;
+    }
+}
+
 static void cmd_target(int ntargets, int *params) {
     int i;
 
@@ -304,6 +457,7 @@ static void cmd_target(int ntargets, int *params) {
         lowmem_adj[i] = ntohl(*params++);
     }
 
+    droidlogic_param();
     lowmem_targets_size = ntargets;
 
     if (use_inkernel_interface) {
