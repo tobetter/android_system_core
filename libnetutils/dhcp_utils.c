@@ -226,6 +226,7 @@ int dhcp_start(const char *interface)
     char daemon_cmd[PROPERTY_VALUE_MAX * 2 + sizeof(DHCP_CONFIG_PATH)];
     const char *ctrl_prop = "ctl.start";
     const char *desired_status = "running";
+    const char *result_status = "ok";
     /* Interface name after converting p2p0-p2p0-X to p2p to reuse system properties */
     char p2p_interface[MAX_INTERFACE_LENGTH];
 
@@ -257,7 +258,7 @@ int dhcp_start(const char *interface)
     }
 
     /* Wait for the daemon to return a result */
-    if (wait_for_property(result_prop_name, NULL, 60) < 0) {
+    if (wait_for_property(result_prop_name, result_status, 180) < 0) {
         snprintf(errmsg, sizeof(errmsg), "%s", "Timed out waiting for DHCP to finish");
         return -1;
     }
@@ -344,7 +345,7 @@ int dhcp_start_renew(const char *interface)
     char prop_value[PROPERTY_VALUE_MAX] = {'\0'};
     char daemon_cmd[PROPERTY_VALUE_MAX * 2];
     const char *ctrl_prop = "ctl.start";
-
+    const char *result_status = "ok";
     char p2p_interface[MAX_INTERFACE_LENGTH];
 
     get_p2p_interface_replacement(interface, p2p_interface);
@@ -363,7 +364,7 @@ int dhcp_start_renew(const char *interface)
     property_set(ctrl_prop, daemon_cmd);
 
     /* Wait for the daemon to return a result */
-    if (wait_for_property(result_prop_name, NULL, 30) < 0) {
+    if (wait_for_property(result_prop_name, result_status, 180) < 0) {
         snprintf(errmsg, sizeof(errmsg), "%s", "Timed out waiting for DHCP Renew to finish");
         return -1;
     }
