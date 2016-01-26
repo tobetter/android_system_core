@@ -668,8 +668,8 @@ static void handle_generic_device_event(struct uevent *uevent)
         if (!assemble_devpath(devpath, subsystem->dirname, devname))
             return;
         mkdir_recursive_for_devpath(devpath);
-    } else if (!strncmp(uevent->subsystem, "usb", 3)) {
-         if (!strcmp(uevent->subsystem, "usb")) {
+    } else if (!strncmp(uevent->subsystem, "usb", 3) || !strncmp(uevent->subsystem, "usbmisc", 7)) {
+         if (!strcmp(uevent->subsystem, "usb") || !strcmp(uevent->subsystem, "usbmisc")) {
             if (uevent->device_name) {
                 if (!assemble_devpath(devpath, "/dev", uevent->device_name))
                     return;
