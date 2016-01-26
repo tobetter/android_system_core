@@ -6,6 +6,8 @@ include $(CLEAR_VARS)
 LOCAL_SRC_FILES:= \
     drmservice.c
 
+LOCAL_MULTILIB := 32
+
 LOCAL_C_INCLUDES += bionic \
 $(call include-path-for, libhardware_legacy)/hardware_legacy
 
