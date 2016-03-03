@@ -26,6 +26,7 @@
 #define WLAN_MAC_FILE "/data/misc/wifi/wlan_mac"
 #define DEVICE_SERIALNO "/data/misc/wifi/serialno"
 #define USB_SERIAL_PATH "/sys/class/android_usb/android0/iSerial"
+#define USB_SERIAL_PATH1 "/config/usb_gadget/g1/strings/0x409/serialnumber"
 
 extern int init_module(void *, unsigned long, const char *);
 extern int delete_module(const char *, unsigned int);
@@ -747,10 +748,24 @@ int write_serialno2kernel(char*result)
 	int fd;
 	if ((fd = open(USB_SERIAL_PATH, O_WRONLY)) < 0) {
 		SLOGE("Unable to open path (%s),error is(%s)",USB_SERIAL_PATH,strerror(errno));
-		return -1;
+		goto try_next;
 	}
 	if (write(fd,result,strlen(result)) < 0) {
         SLOGE("Unable to write path (%s),error is(%s)",USB_SERIAL_PATH,strerror(errno));
+        close(fd);
+        return -1;
+    }
+    close(fd);
+    return 0;
+
+try_next:
+        SLOGE("try %s", USB_SERIAL_PATH1);
+        if ((fd = open(USB_SERIAL_PATH1, O_WRONLY)) < 0) {
+                SLOGE("Unable to open path (%s),error is(%s)",USB_SERIAL_PATH1,strerror(errno));
+                return -1;
+        }
+        if (write(fd,result,strlen(result)) < 0) {
+        SLOGE("Unable to write path (%s),error is(%s)",USB_SERIAL_PATH1,strerror(errno));
         close(fd);
         return -1;
     }
