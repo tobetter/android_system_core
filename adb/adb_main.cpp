@@ -39,6 +39,7 @@
 #include "selinux/selinux.h"
 
 #include "qemu_tracing.h"
+#include <cutils/klog.h>
 #endif
 
 static void adb_cleanup(void)
@@ -357,6 +358,30 @@ void close_stdin() {
     dup2(fd, 0);
     adb_close(fd);
 }
+
+// usb adb will use ro.serialno write into /config/usb_gadget/g1/strings/0x409/serialnumber for adb connect.
+// ro.serialno is generate by drmservie which is started later than adbd service, so adb usb driver can't get serialno in time. 
+// must wait for ro.serialno ready, then start adbd.
+static int wait_for_serialno_ready(void) {
+    char value[PROPERTY_VALUE_MAX];
+    int count = 50;
+
+    //KLOG_ERROR("adb_main", "wait_for_serialno_ready\n");
+    while (1) {
+        property_get("ro.serialno", value, "none");
+        if (strcmp(value, "none") == 0) {
+            usleep(200000);
+            //KLOG_ERROR("adb_main", "ro.serialno not ready\n");
+            if (count-- <= 0)
+                break;
+            continue;
+        }
+        //KLOG_ERROR("adb_main", "ro.serialno ready\n");
+        break;
+    }
+    //KLOG_ERROR("adb_main", "wait_for_serialno_ready return count = %d\n", count);
+    return 0;
+}
 #endif
 
 // TODO(danalbert): Split this file up into adb_main.cpp and adbd_main.cpp.
@@ -404,6 +429,8 @@ int main(int argc, char **argv) {
     /* If adbd runs inside the emulator this will enable adb tracing via
      * adb-debug qemud service in the emulator. */
     adb_qemu_trace_init();
+
+    wait_for_serialno_ready();
 
     D("Handling main()\n");
     return adb_main(0, DEFAULT_ADB_PORT);
