@@ -498,7 +498,7 @@ static int set_mem_management_thresh()
     if (thresh < 512 * 1024) {
         thresh = 2048;
     } else {
-        thresh = 4096;
+        thresh = 8192;
     }
 
     sprintf(buffer, "%d", thresh);
