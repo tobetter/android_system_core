@@ -159,7 +159,7 @@ static struct frame batt_anim_frames[] = {
 };
 
 static struct animation battery_animation = {
-    .run = false,
+    .run = true,
     .frames = batt_anim_frames,
     .cur_frame = 0,
     .num_frames = ARRAY_SIZE(batt_anim_frames),
