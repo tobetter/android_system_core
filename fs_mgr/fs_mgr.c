@@ -978,8 +978,14 @@ int fs_mgr_swapon_all(struct fstab *fstab)
         }
 
         mkfs_argv[1] = fstab->recs[i].blk_device;
+        if (setexeccon("u:r:make_ext4fs:s0")) {
+            ERROR("Failed to setexeccon");
+        }
         err = android_fork_execvp_ext(ARRAY_SIZE(mkfs_argv), mkfs_argv,
                                       &status, true, LOG_KLOG, false, NULL);
+        if (setexeccon(NULL)) {
+            ERROR("Failed to setexeccon");
+        }
         if (err) {
             ERROR("mkfs failed for %s, error:%d\n", fstab->recs[i].blk_device, err);
             ret = -1;
