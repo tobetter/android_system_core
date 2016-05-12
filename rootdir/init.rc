@@ -688,6 +688,7 @@ service bootanim /system/bin/bootanimation
 service gatekeeperd /system/bin/gatekeeperd /data/misc/gatekeeper
     class late_start
     user system
+    group system
 
 service installd /system/bin/installd
     class main
