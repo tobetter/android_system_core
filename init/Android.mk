@@ -24,6 +24,13 @@ endif
 ifeq ($(strip $(TARGET_BOARD_PLATFORM)), rk312x)
 	init_options += -DTARGET_BOARD_PLATFORM_RK312x
 endif
+ifeq ($(strip $(TARGET_BOARD_PLATFORM_PRODUCT)), box)
+    LOCAL_CFLAGS += -DTARGET_BOARD_PLATFORM_PRODUCT_BOX
+endif
+ifeq ($(strip $(TARGET_DISASTER_RECOVERY)), true)
+    LOCAL_CFLAGS += -DTARGET_DISASTER_RECOVERY
+endif
+
 
 init_cflags += \
     $(init_options) \
