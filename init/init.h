@@ -92,6 +92,10 @@ struct svcenvinfo {
 
 #define COMMAND_RETRY_TIMEOUT 5
 
+/* IMPORTANT: THE VALUE OF STORAGE_MEDIA MUST BE CONSISTANT WITH UBOOT */
+#define EMMC_RETRY_COUNT 20
+#define STORAGE_MEDIA "storagemedia=emmc"
+
 struct service {
     void NotifyStateChange(const char* new_state);
 
