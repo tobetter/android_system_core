@@ -13,6 +13,8 @@
 #include <cutils/sockets.h>
 #include <cutils/iosched_policy.h>
 #include "wifi.h"
+#include <dirent.h>
+#include <sys/stat.h>
 
 
 #define LOG_TAG "DrmService"
@@ -820,6 +822,121 @@ bool detect_keybox()
 	return true;
 }
 
+void change_path(const char *path)
+{
+	SLOGE("Leave %s Successed . . .\n",getcwd(NULL,0));
+	if(chdir(path)==-1)
+	{
+		SLOGE("chdir %s error",path);
+		return;
+	}
+	SLOGE("Entry %s Successed . . .\n",getcwd(NULL,0));
+}
+
+
+void copy_file(const char *old_path,const char *new_path)
+{
+	FILE *in,*out;
+	size_t len;
+	char buf[64];
+	char *p=getcwd(NULL,0);
+	SLOGE("start copy file,from %s to %s\n",old_path,new_path);
+
+	if((in=fopen(old_path,"rb"))==NULL)
+	{
+		SLOGE("fopen %s error\n",old_path);
+		return;
+	}
+	//change_path(new_path);
+
+	if((out=fopen(new_path,"wb"))==NULL)
+	{
+		SLOGE("fopen %s error\n",new_path);
+		return;
+	}
+
+	while(!feof(in))
+	{
+                bzero(buf,sizeof(buf));
+		len=fread(&buf,1,sizeof(buf)-1,in);
+		fwrite(&buf,len,1,out);
+	}
+	fclose(in);
+	fclose(out);
+	//change_path(p);
+}
+
+char *get_abs_path(const char *dir,const char *path)
+{
+	char *rel_path;
+	unsigned long d_len,p_len;
+
+	d_len=strlen(dir);
+	p_len=strlen(path);
+	if((rel_path=malloc(d_len+p_len+2))==NULL)
+	{
+		SLOGE("malloc fail\n");
+		return NULL;
+	}
+	bzero(rel_path,d_len+p_len+2);
+	
+	strncpy(rel_path,dir,d_len);
+	strncat(rel_path,"/",sizeof(char));
+	strncat(rel_path,path,p_len);
+	
+	return rel_path;
+}
+
+void copy_dir(const char *old_path,const char *new_path)
+{
+	DIR *dir;
+	struct stat buf;
+	struct dirent *dirp;
+	char *p=getcwd(NULL,0);
+	if((dir=opendir(old_path))==NULL)
+	{
+		SLOGE("opendir %s fail\n",old_path);
+		return;
+	}
+	char *root_dir_abs_path = get_abs_path("/data/media/0",new_path);
+	SLOGE("--root_dir_abs_path =%s--\n",root_dir_abs_path);
+	if(mkdir(root_dir_abs_path,0777)==-1)
+	{
+		SLOGE("mkdir %s fail \n",root_dir_abs_path);
+		free(root_dir_abs_path);
+		return;
+	}
+	change_path(old_path);
+	while((dirp=readdir(dir)))
+	{
+		if(strcmp(dirp->d_name,".")==0 || strcmp(dirp->d_name,"..")==0)
+			continue;
+		if(stat(dirp->d_name,&buf)==-1)
+		{
+			SLOGE("stat %s fail\n",dirp->d_name);
+			return;
+		}
+		if(S_ISDIR(buf.st_mode))
+		{
+			char * sub_dir_abs_path = get_abs_path(new_path,dirp->d_name);
+			SLOGE("--subdir abs path =%s\n",sub_dir_abs_path);
+			copy_dir(dirp->d_name,sub_dir_abs_path);
+			free(sub_dir_abs_path);
+			continue;
+		}
+		char* file_abs_path = get_abs_path(root_dir_abs_path,dirp->d_name);
+		SLOGE("--file abs path =%s\n",file_abs_path);
+		copy_file(dirp->d_name,file_abs_path);
+		chmod(file_abs_path,S_IRUSR|S_IWUSR|S_IXUSR|S_IRGRP|S_IWGRP|S_IXGRP|S_IROTH|S_IXOTH);
+		free(file_abs_path);
+	}
+
+	closedir(dir);
+	change_path(p);
+	chmod(root_dir_abs_path,S_IRUSR|S_IWUSR|S_IXUSR|S_IRGRP|S_IWGRP|S_IXGRP|S_IROTH|S_IXOTH);
+	free(root_dir_abs_path);
+}
+
 
 
 
@@ -829,6 +946,11 @@ bool detect_keybox()
 int main( int argc, char *argv[] )
 {
 	SLOGE("----------------running drmservice---------------");
+    	char propbuf_source[PROPERTY_VALUE_MAX];
+	char propbuf_dest[PROPERTY_VALUE_MAX];
+	property_get("ro.boot.copy_source", propbuf_source, "");
+	property_get("ro.boot.copy_dest", propbuf_dest, "");
+
 	if(SERIALNO_FROM_IDB)//read serialno form idb
 	{
 		rknand_sys_storage_test_sn();
@@ -854,6 +976,12 @@ int main( int argc, char *argv[] )
 		property_set("drm.service.enabled","false");
 		SLOGE("detect keybox disabled");
 	}
+	if ((*propbuf_source != '\0')&&( *propbuf_dest != '\0')) {
+		SLOGE("---do bootup copy from %s to %s",propbuf_source,propbuf_dest);
+		copy_dir(propbuf_source,propbuf_dest);
+		SLOGE("---done bootup copy--");
+	}
+
 	//read_region_tag();//add by xzj to add property ro.board.zone read from flash
 	//rknand_sys_storage_vendor_sector_store();
     //rknand_sys_storage_vendor_sector_load();
