@@ -871,7 +871,8 @@ static void export_kernel_boot_props() {
             break;
         } else {
             ERROR("OK,EMMC DRIVERS NOT READY, RERRY=%d\n", i);
-            sleep(1);
+            //sleep(1);
+            usleep(10000);
         }
     }
 
@@ -1193,6 +1194,51 @@ static void rk_3368_set_cpu(void)
 }
 #endif
 
+#ifdef TARGET_BOARD_PLATFORM_RK3399
+static void rk_3399_set_cpu(void)
+{
+    int fd;
+    char buf[128];
+    char value[16]={"1512000"};//1512000  1416000
+    char value_large[16] = {"1992000"};//1992000 1800000
+    bool can_set_cpu = false;
+
+    fd = open("/sys/devices/system/cpu/cpu0/cpufreq/scaling_available_frequencies",O_RDONLY);
+    if (fd >= 0) {
+        int n = read(fd, buf, sizeof(buf) - 1);
+        if (n > 0) {
+            buf[n-1] = '\0';
+            //check whether 1.2G in the freqs table
+            if(strstr(buf,value)){
+                can_set_cpu = true;
+            }
+            // ERROR("available_frequencies %s \n",buf);
+        }
+        close(fd);
+    }else {
+         ERROR("error to open scaling_available_frequencies");
+    }
+    //first set write permission to root
+    chmod("/sys/devices/system/cpu/cpu0/cpufreq/scaling_min_freq", 0644);
+    fd = open("/sys/devices/system/cpu/cpu0/cpufreq/scaling_min_freq",O_RDWR);
+    if (fd >= 0) {
+        if(can_set_cpu){
+            write(fd, value, strlen(value));
+        }
+        close(fd);
+    }
+    //set big core
+    chmod("/sys/devices/system/cpu/cpu4/cpufreq/scaling_min_freq", 0644);
+    fd = open("/sys/devices/system/cpu/cpu4/cpufreq/scaling_min_freq",O_RDWR);
+    if (fd >= 0) {
+        if(can_set_cpu){
+            write(fd, value_large, strlen(value_large));
+        }
+        close(fd);
+    }
+}
+#endif
+
 static void rk_parse_cpu(void)
 {
     int fd;
@@ -1245,6 +1291,9 @@ int main(int argc, char** argv) {
 #endif
 #ifdef TARGET_BOARD_PLATFORM_RK312x
 	rk_312x_set_cpu();
+#endif
+#ifdef TARGET_BOARD_PLATFORM_RK3399
+    rk_3399_set_cpu();
 #endif
 #endif
 

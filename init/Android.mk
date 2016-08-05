@@ -24,6 +24,9 @@ endif
 ifeq ($(strip $(TARGET_BOARD_PLATFORM)), rk312x)
 	init_options += -DTARGET_BOARD_PLATFORM_RK312x
 endif
+ifeq ($(strip $(TARGET_BOARD_PLATFORM)), rk3399)
+	init_options += -DTARGET_BOARD_PLATFORM_RK3399
+endif
 ifeq ($(strip $(TARGET_BOARD_PLATFORM_PRODUCT)), box)
     LOCAL_CFLAGS += -DTARGET_BOARD_PLATFORM_PRODUCT_BOX
 endif
