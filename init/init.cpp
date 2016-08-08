@@ -1200,7 +1200,7 @@ static void rk_3399_set_cpu(void)
     int fd;
     char buf[128];
     char value[16]={"1512000"};//1512000  1416000
-    char value_large[16] = {"1992000"};//1992000 1800000
+    char value_large[16] = {"1800000"};//1992000 1800000
     bool can_set_cpu = false;
 
     fd = open("/sys/devices/system/cpu/cpu0/cpufreq/scaling_available_frequencies",O_RDONLY);
