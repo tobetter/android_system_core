@@ -242,7 +242,9 @@ on late-init
 
 
 on post-fs
-    start logd
+    # set RLIMIT_NICE to allow priorities from 19 to -20                                                                                                            
+    setrlimit 13 40 40
+    class_start core
     # once everything is setup, no need to modify /
     mount rootfs rootfs / ro remount
     # Mount shared so changes propagate into child namespaces
@@ -406,9 +408,6 @@ on boot
     hostname localhost
     domainname localdomain
 
-    # set RLIMIT_NICE to allow priorities from 19 to -20
-    setrlimit 13 40 40
-
     # Memory management.  Basic kernel parameters, and allow the high
     # level system server to be able to adjust the kernel OOM driver
     # parameters to match how it is managing things.
@@ -490,7 +489,6 @@ on boot
     # Define default initial receive window size in segments.
     setprop net.tcp.default_init_rwnd 60
 
-    class_start core
 
 on nonencrypted
     class_start main
