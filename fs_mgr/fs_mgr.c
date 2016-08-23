@@ -53,10 +53,10 @@
 #define KEY_LOC_PROP   "ro.crypto.keyfile.userdata"
 #define KEY_IN_FOOTER  "footer"
 
-#define E2FSCK_BIN      "/sbin/e2fsck"
-#define F2FS_FSCK_BIN  "/system/bin/fsck.f2fs"
+#define E2FSCK_BIN      "/system/bin/e2fsck"
+#define F2FS_FSCK_BIN   "/system/bin/fsck.f2fs"
 #define MKSWAP_BIN      "/system/bin/mkswap"
-#define RESIZE2FS_BIN   "/sbin/resize2fs"
+#define RESIZE2FS_BIN   "/system/bin/resize2fs"
 
 #define FSCK_LOG_FILE   "/dev/fscklogs/log"
 
