@@ -286,6 +286,22 @@ void service_start(struct service *svc, const char *dynamic_args)
         struct svcenvinfo *ei;
         char tmp[32];
         int fd, sz;
+        if(!strncmp(svc->name,"zygote",6)){
+	     char prop_value[PROP_VALUE_MAX] = {0};
+	     property_get("vold.decrypt", prop_value);
+	     INFO("hxw vold.decrypt: %s \n",prop_value);
+            if(!strncmp(prop_value,"trigger",7)){
+                for(int i=0;i<10 && strncmp(prop_value,"trigger_restart_framework",25);i++){
+                    if(!strncmp(prop_value,"trigger_restart_framework",25))break;
+                    if(!strncmp(prop_value,"trigger_restart_min_framework",29))break;
+                    if(!strncmp(prop_value,"trigger_post_fs_data",20))usleep(2000000);
+                    else
+                        usleep(500000);
+                    property_get("vold.decrypt", prop_value);
+                    INFO("hxw vold.decrypt: %s \n",prop_value);
+                }
+            }
+        }
 
         umask(077);
         if (properties_initialized()) {
