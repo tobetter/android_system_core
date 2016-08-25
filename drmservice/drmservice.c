@@ -55,6 +55,10 @@ typedef		unsigned char	    uint8;
 #define RKNAND_GET_VENDOR_SECTOR1       _IOW('v', 18, unsigned int)
 #define RKNAND_STORE_VENDOR_SECTOR1     _IOW('v', 19, unsigned int)
 
+#define VENDOR_REQ_TAG		0x56524551
+#define VENDOR_READ_IO		_IOW('v', 0x01, unsigned int)
+#define VENDOR_WRITE_IO		_IOW('v', 0x02, unsigned int)
+
 
 #define RKNAND_LOADER_LOCK         _IOW('l', 40, unsigned int)
 #define RKNAND_LOADER_UNLOCK        _IOW('l', 50, unsigned int)
@@ -69,6 +73,10 @@ typedef		unsigned char	    uint8;
 #define VENDOR_SECTOR_OP_TAG        0x444E4556 // "VEND"
 #define LOADER_LOCK_UNLOCK_TAG      0x4C4F434B // "LOCK"
 
+#define VENDOR_SN_ID		1
+#define VENDOR_WIFI_MAC_ID	2
+#define VENDOR_LAN_MAC_ID	3
+#define VENDOR_BLUETOOTH_ID	4
 
 #define DEBUG_LOG 0   //open debug info
 
@@ -84,6 +92,13 @@ extern int ifc_down(const char *name);
 
 extern void *load_file(const char *fn, unsigned *sz);
 int get_serialno_cached(char * result,int len);
+
+struct rk_vendor_req {
+	uint32 tag;
+	uint16 id;
+	uint16 len;
+	uint8 data[RKNAND_SYS_STORGAE_DATA_LEN];
+};
 
 void rknand_print_hex_data(uint8 *s,uint32 * buf,uint32 len)
 {
@@ -309,6 +324,7 @@ int rknand_sys_storage_get_loader_status(int * plock_status)
 /*
 read SN from IDB3,from 0-31bit
 */
+
 int rknand_sys_storage_test_sn(void)
 {
     uint32 i;
@@ -345,6 +361,45 @@ int rknand_sys_storage_test_sn(void)
     return 0;
 }
 
+int rk3399_vendor_storage_read_sn(void)
+{
+    uint32 i;
+	int ret ;
+	uint16 len;
+	struct rk_vendor_req req;
+    memset(sn_buf_idb,0,sizeof(sn_buf_idb));
+	int sys_fd = open("/dev/vendor_storage",O_RDWR,0);
+	if(sys_fd < 0){
+		SLOGE("vendor_storage open fail\n");		
+		return -1;
+	}
+	
+	req.tag = VENDOR_REQ_TAG;
+	req.id = VENDOR_SN_ID;
+	req.len = RKNAND_SYS_STORGAE_DATA_LEN; /* max read length to read*/	
+	ret = ioctl(sys_fd, VENDOR_READ_IO, &req);
+	close(sys_fd);
+	rknand_print_hex_data("vendor read:", (uint32*)req.data, req.len/4 + 3);
+	/* return req->len is the real data length stored in the NV-storage */	
+	if(ret){
+		SLOGE("vendor read error\n");			
+		return -1;
+	}
+    //get the sn length
+    len = req.len;
+    if(len > 30)
+    {
+	len =30;
+    }
+    if(len < 0)
+    {
+	len =0;
+    }	
+    memcpy(sn_buf_idb,req.data,len);
+	SLOGE("vendor read sn_buf_idb:%s\n",sn_buf_idb);
+    //property_set("sys.serialno",sn_buf_idb);   
+    return 0;
+}
 /*
 read user defined data from  IDB3, from 32-512bit
 */
@@ -946,14 +1001,22 @@ void copy_dir(const char *old_path,const char *new_path)
 int main( int argc, char *argv[] )
 {
 	SLOGE("----------------running drmservice---------------");
-    	char propbuf_source[PROPERTY_VALUE_MAX];
+    char propbuf_source[PROPERTY_VALUE_MAX];
 	char propbuf_dest[PROPERTY_VALUE_MAX];
+	char prop_board_platform[PROPERTY_VALUE_MAX];
 	property_get("ro.boot.copy_source", propbuf_source, "");
 	property_get("ro.boot.copy_dest", propbuf_dest, "");
-
+	property_get("ro.board.platform", prop_board_platform, "");
+	SLOGE("get prop_board_platform,prop_board_platform = %s , diff=%d",prop_board_platform,
+		strcmp(prop_board_platform,"rk3399"));
+		
 	if(SERIALNO_FROM_IDB)//read serialno form idb
-	{
-		rknand_sys_storage_test_sn();
+	{		
+		if(!strcmp(prop_board_platform,"rk3399")){
+			rk3399_vendor_storage_read_sn();
+		}else{
+			rknand_sys_storage_test_sn();
+		}
 		property_set("sys.serialno", sn_buf_idb[0] ? sn_buf_idb : ""); 
         	write_serialno2kernel(sn_buf_idb);
 		SLOGE("get serialno from idb,serialno = %s",sn_buf_idb);
