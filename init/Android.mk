@@ -3,11 +3,22 @@
 LOCAL_PATH:= $(call my-dir)
 
 # --
+ifeq ($(strip $(TARGET_BOARD_PLATFORM_PRODUCT)), box)
 
 ifneq (,$(filter userdebug eng user,$(TARGET_BUILD_VARIANT)))
 init_options += -DALLOW_LOCAL_PROP_OVERRIDE=1 -DALLOW_DISABLE_SELINUX=1
 else
 init_options += -DALLOW_LOCAL_PROP_OVERRIDE=0 -DALLOW_DISABLE_SELINUX=0
+endif
+
+else
+
+ifneq (,$(filter userdebug eng,$(TARGET_BUILD_VARIANT)))
+init_options += -DALLOW_LOCAL_PROP_OVERRIDE=1 -DALLOW_DISABLE_SELINUX=1
+else
+init_options += -DALLOW_LOCAL_PROP_OVERRIDE=0 -DALLOW_DISABLE_SELINUX=0
+endif
+
 endif
 
 init_options += -DLOG_UEVENTS=0
