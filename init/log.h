@@ -26,4 +26,13 @@
 void init_klog_write(int level, const char* fmt, ...) __printflike(2, 3);
 int selinux_klog_callback(int level, const char* fmt, ...) __printflike(2, 3);
 
+#define D(fmt, args...) \
+    { ERROR(" D : [File] : %s; [Line] : %d; [Func] : %s; " fmt "\n", __FILE__, __LINE__, __FUNCTION__, ## args); }
+
+#define W(fmt, args...) \
+    { ERROR(" W : [File] : %s; [Line] : %d; [Func] : %s; " fmt "\n", __FILE__, __LINE__, __FUNCTION__, ## args); }
+
+#define E(fmt, args...) \
+    { ERROR(" E : [File] : %s; [Line] : %d; [Func] : %s; " fmt "\n", __FILE__, __LINE__, __FUNCTION__, ## args); }
+
 #endif

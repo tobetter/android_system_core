@@ -55,6 +55,36 @@ int add_environment(const char *name, const char *value);
 // System call provided by bionic but not in any header file.
 extern "C" int init_module(void *, unsigned long, const char *);
 
+/*
+ * Mark the given block device as read-write, using the BLKROSET ioctl.
+ */
+static int fs_set_blk_rw(const char *blockdev)
+{
+    int ret = 0;
+    int fd;
+    int OFF = 0;
+
+    fd = open(blockdev, O_RDONLY);
+    if (fd < 0) {
+        E("fail to open '%s', err : %d(%s).", blockdev, errno, strerror(errno) )
+        ret = -1;
+        goto EXIT;
+    }
+
+    ret = ioctl(fd, BLKROSET, &OFF);
+    if ( 0 != ret ) {
+        E("fail to ioctl, err : %d(%s).", errno, strerror(errno) )
+        goto EXIT;
+    }
+
+EXIT:
+    if ( fd > 0 ) {
+        close(fd);
+    }
+
+    return ret;
+}
+
 static int insmod(const char *filename, char *options)
 {
     char filename_val[PROP_VALUE_MAX];
@@ -362,8 +392,21 @@ int do_mount(int nargs, char **args)
         ERROR("out of loopback devices");
         return -1;
     } else {
+        int ret = 0;
+
         if (wait)
             wait_for_file(source, COMMAND_RETRY_TIMEOUT);
+
+        if ( strstr(source, "/dev/block/") != NULL
+                && (flags & MS_RDONLY) == 0) {
+            // D("to set source_block_device '%s' RW.", source);
+            ret = fs_set_blk_rw(source); // .KP : 必须, 否则 系统调用 mount 将失败, 返回 EACCES.
+            if ( ret < 0 ) {
+                E("fail to set RW, ret : %d.", ret);
+                return -1;
+            }
+        }
+
         if (mount(source, target, system, flags, options) < 0) {
             return -1;
         }
