@@ -222,12 +222,13 @@ on firmware_mounts_complete
 on late-init
     trigger early-fs
     trigger fs
-    trigger post-fs
 
     # Load properties from /system/ + /factory after fs mount. Place
     # this in another action so that the load will be scheduled after the prior
     # issued fs triggers have completed.
     trigger load_system_props_action
+
+    trigger post-fs
 
     # Now we can mount /data. File encryption requires keymaster to decrypt
     # /data, which in turn can only be loaded when system properties are present
