@@ -93,7 +93,7 @@ struct svcenvinfo {
 #define COMMAND_RETRY_TIMEOUT 5
 
 /* IMPORTANT: THE VALUE OF STORAGE_MEDIA MUST BE CONSISTANT WITH UBOOT */
-#define EMMC_RETRY_COUNT 20
+#define EMMC_RETRY_COUNT 200
 #define STORAGE_MEDIA "storagemedia=emmc"
 
 struct service {
