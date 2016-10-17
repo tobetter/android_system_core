@@ -40,6 +40,8 @@ static char errmsg[100] = "\0";
  */
 #define MAX_INTERFACE_LENGTH 25
 
+#define DHCP_TIMEOUT 60
+
 /*
  * P2p interface names increase sequentially p2p-p2p0-1, p2p-p2p0-2.. after
  * group formation. This does not work well with system properties which can quickly
@@ -244,11 +246,11 @@ int dhcp_start(const char *interface)
 
     /* Start the daemon and wait until it's ready */
     if (property_get(HOSTNAME_PROP_NAME, prop_value, NULL) && (prop_value[0] != '\0'))
-        snprintf(daemon_cmd, sizeof(daemon_cmd), "%s_%s:-f %s -h %s %s -t 60", DAEMON_NAME,
-                 p2p_interface, DHCP_CONFIG_PATH, prop_value, interface);
+        snprintf(daemon_cmd, sizeof(daemon_cmd), "%s_%s:-f %s -h %s %s -t %d", DAEMON_NAME,
+                 p2p_interface, DHCP_CONFIG_PATH, prop_value, interface, DHCP_TIMEOUT);
     else
-        snprintf(daemon_cmd, sizeof(daemon_cmd), "%s_%s:-f %s %s -t 60", DAEMON_NAME,
-                 p2p_interface, DHCP_CONFIG_PATH, interface);
+        snprintf(daemon_cmd, sizeof(daemon_cmd), "%s_%s:-f %s %s -t %d", DAEMON_NAME,
+                 p2p_interface, DHCP_CONFIG_PATH, interface, DHCP_TIMEOUT);
     memset(prop_value, '\0', PROPERTY_VALUE_MAX);
     property_set(ctrl_prop, daemon_cmd);
     if (wait_for_property(daemon_prop_name, desired_status, 10) < 0) {
@@ -257,7 +259,7 @@ int dhcp_start(const char *interface)
     }
 
     /* Wait for the daemon to return a result */
-    if (wait_for_property(result_prop_name, NULL, 60) < 0) {
+    if (wait_for_property(result_prop_name, NULL, DHCP_TIMEOUT) < 0) {
         snprintf(errmsg, sizeof(errmsg), "%s", "Timed out waiting for DHCP to finish");
         return -1;
     }
@@ -357,13 +359,13 @@ int dhcp_start_renew(const char *interface)
     property_set(result_prop_name, "");
 
     /* Start the renew daemon and wait until it's ready */
-    snprintf(daemon_cmd, sizeof(daemon_cmd), "%s_%s:%s -t 60", DAEMON_NAME_RENEW,
-            p2p_interface, interface);
+    snprintf(daemon_cmd, sizeof(daemon_cmd), "%s_%s:%s -t %d", DAEMON_NAME_RENEW,
+            p2p_interface, interface, DHCP_TIMEOUT);
     memset(prop_value, '\0', PROPERTY_VALUE_MAX);
     property_set(ctrl_prop, daemon_cmd);
 
     /* Wait for the daemon to return a result */
-    if (wait_for_property(result_prop_name, NULL, 60) < 0) {
+    if (wait_for_property(result_prop_name, NULL, DHCP_TIMEOUT) < 0) {
         snprintf(errmsg, sizeof(errmsg), "%s", "Timed out waiting for DHCP Renew to finish");
         return -1;
     }
