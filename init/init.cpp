@@ -1154,7 +1154,7 @@ static void rk_3368_set_cpu(void)
     char value_large[16] = {"1512000"};
     bool can_set_cpu = false;
 
-    fd = open("/sys/devices/system/cpu/cpu0/cpufreq/scaling_available_frequencies",O_RDONLY);
+    fd = open("/sys/devices/system/cpu/cpu4/cpufreq/scaling_available_frequencies",O_RDONLY);
 
     if (fd >= 0) {
         int n = read(fd, buf, sizeof(buf) - 1);
