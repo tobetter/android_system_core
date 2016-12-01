@@ -1153,6 +1153,30 @@ static void rk_3368_set_cpu(void)
     char value[16]={"1200000"};
     char value_large[16] = {"1512000"};
     bool can_set_cpu = false;
+    fd = open("sys/rockchip_thermal/temp",O_RDONLY);
+    if(fd >= 0){
+	 int n = read(fd, buf, sizeof(buf) - 1);
+	 if(n > 0){
+		char *cpu_temp = buf;
+		char needle[5] = ":";
+		char *cpu_temp_buf = strstr( cpu_temp, needle);
+	        if( cpu_temp_buf != NULL )
+		{
+		    cpu_temp = cpu_temp_buf + strlen(needle);
+		}
+		if(cpu_temp != NULL){
+			int current_tmp = atoi(cpu_temp);
+			if(current_tmp >= 100){
+				ERROR("The current temperature:%d is greater than 100\n",current_tmp);
+				return;
+	                }
+		}
+	 }
+	close(fd);
+	memset(buf,0,128);
+    }else{
+	ERROR("error to open sys/rockchip_thermal/temp");
+    }
 
     fd = open("/sys/devices/system/cpu/cpu4/cpufreq/scaling_available_frequencies",O_RDONLY);
 
