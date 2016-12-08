@@ -63,7 +63,6 @@
 #include "util.h"
 #include "ueventd.h"
 #include "watchdogd.h"
-#include "ubootenv.h"
 
 struct selabel_handle *sehandle;
 struct selabel_handle *sehandle_prop;
@@ -71,7 +70,6 @@ struct selabel_handle *sehandle_prop;
 static int property_triggers_enabled = 0;
 
 static char qemu[32];
-static bool instabooting = false;
 
 static struct action *cur_action = NULL;
 static struct command *cur_command = NULL;
@@ -452,12 +450,6 @@ void service_restart(struct service *svc)
 
 void property_changed(const char *name, const char *value)
 {
-    if (strcmp(name, "sys.ubootenv.reload") == 0
-          && (strcmp(value, "0") == 0)){
-        bootenv_reinit();
-        init_property_set("sys.ubootenv.reload","1");
-    }
-
     if (property_triggers_enabled)
         queue_property_triggers(name, value);
 }
@@ -992,23 +984,6 @@ static void selinux_initialize(bool in_kernel_domain) {
                is_enforcing ? "enforcing" : "non-enforcing", t.duration());
     } else {
         selinux_init_all_handles();
-    }
-}
-
-void instaboot_initialize(void)
-{
-    const char* sys_file = "/sys/power/boot_type";
-    char buf[32]={0};
-
-    FILE* file = fopen(sys_file, "rb");
-    if (file == NULL) {
-        ERROR("Failed to open %s(%s)", sys_file, strerror(errno));
-        return;
-    }
-    fread(buf, 1, 32, file);
-    INFO("instaboot_initialize (%s)\n", buf);
-    if (!strncmp(buf, "instabooting", strlen("instabooting"))) {
-        instabooting = true;
     }
 }
 
