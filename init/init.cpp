@@ -1010,7 +1010,6 @@ void instaboot_initialize(void)
     if (!strncmp(buf, "instabooting", strlen("instabooting"))) {
         instabooting = true;
     }
-    fclose(file);
 }
 
 static int aml_firstbootinit()
@@ -1050,19 +1049,6 @@ int main(int argc, char** argv) {
         mount("devpts", "/dev/pts", "devpts", 0, NULL);
         mount("proc", "/proc", "proc", 0, NULL);
         mount("sysfs", "/sys", "sysfs", 0, NULL);
-
-        instaboot_initialize();
-        if (instabooting) {
-            init_parse_config_file("/instaboot.rc");
-            action_for_each_trigger("early-init", action_add_queue_tail);
-
-            for (;;) {
-                execute_one_command();
-                execute_one_command();
-                execute_one_command();
-                usleep(100000);
-            }
-        }
     }
 
     // We must have some place other than / to create the device nodes for
