@@ -219,7 +219,7 @@ static int property_set_impl(const char* name, const char* value) {
 
     if(pi != 0) {
         /* ro.* properties may NEVER be modified once set */
-        if(!strncmp(name, "ro.", 3)) return -1;
+       // if(!strncmp(name, "ro.", 3)) return -1;
 
         __system_property_update(pi, value, valuelen);
     } else {

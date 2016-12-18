@@ -35,6 +35,7 @@
 #include <termios.h>
 #include <unistd.h>
 
+
 #include <mtd/mtd-user.h>
 
 #include <selinux/selinux.h>
@@ -1240,7 +1241,7 @@ static void rk_3399_set_cpu(void)
         }
         close(fd);
     }else {
-         ERROR("error to open scaling_available_frequencies");
+         ERROR("error to open scaling_available_frequencies\n");
     }
     //first set write permission to root
     chmod("/sys/devices/system/cpu/cpu0/cpufreq/scaling_min_freq", 0644);
@@ -1263,6 +1264,234 @@ static void rk_3399_set_cpu(void)
 }
 #endif
 
+//#define EDID_PROP_SUPPORT
+#ifdef EDID_PROP_SUPPORT
+struct edid_prop_value {
+	int vid;
+	int pid;
+	int sn;
+	int xres;
+	int yres;
+	int vic;
+	int width;
+	int height;
+	int x_w;
+	int x_h;
+	int hwrotation;
+	int einit;
+	int vsync;
+	int panel;
+	int scan;
+};
+
+struct edid_prop_str {
+	char vid[PROP_VALUE_MAX];
+	char pid[PROP_VALUE_MAX];
+	char sn[PROP_VALUE_MAX];
+	char xres[PROP_VALUE_MAX];
+	char yres[PROP_VALUE_MAX];
+	char vic[PROP_VALUE_MAX];
+	char width[PROP_VALUE_MAX];
+	char height[PROP_VALUE_MAX];
+	char x_w[PROP_VALUE_MAX];
+	char x_h[PROP_VALUE_MAX];
+	char hwrotation[PROP_VALUE_MAX];
+	char einit[PROP_VALUE_MAX];
+	char vsync[PROP_VALUE_MAX];
+	char panel[PROP_VALUE_MAX];
+	char scan[PROP_VALUE_MAX];
+};
+
+static char prop_buf[256],last_prop_buf[256];
+
+static void edid_set_default_prop(void)
+{
+	property_set("sys.xxx.x_w", "1152");
+	property_set("sys.xxx.x_h", "2048");
+	property_set("ro.sf.hwrotation", "90");
+	property_set("ro.orientation.einit", "0");
+	property_set("sys.vr.scan", "0");
+	property_set("sys.vr.panel", "0");
+	property_set("sys.vr.scan", "0");
+
+	ERROR("%s:line=%d,set default prop: xres=1152,yres=2048,hwrotation=90,orientation=90,vsync=0,panel=0,scan=0\n",__FUNCTION__, __LINE__);
+}
+
+
+static void rk_parse_edid_prop(void)
+{
+	int fdc = -1, fd = -1;
+	static struct edid_prop_value val;
+	static struct edid_prop_str prop;
+	static struct edid_prop_str temp;
+	int valid = 0;
+	int i = 0, n = 0;
+	int path_type = 0;
+
+	ERROR("%s:line=%d start\n", __FUNCTION__, __LINE__);
+	for (i=0; i<60; i++)
+	{
+		/* check  DP or HDMI was connected */
+		fdc = open("/sys/class/display/HDMI/connect",O_RDONLY);
+		if(fdc >=0) {
+			n = read(fdc, prop_buf, sizeof(prop_buf) - 1);
+			if (n > 0) {
+				prop_buf[n-1] = '\0';
+				if(strstr(prop_buf,"1")) {
+					path_type = 1;
+				}
+			}
+			close(fdc);
+	        }
+
+		fdc = open("/sys/class/display/DP/connect",O_RDONLY);
+		if(fdc >=0) {
+			n = read(fdc, prop_buf, sizeof(prop_buf) - 1);
+			if (n > 0) {
+				prop_buf[n-1] = '\0';
+				if(strstr(prop_buf,"1")){
+					path_type = 2;
+				}
+			}
+			close(fdc);
+		}
+
+		if(path_type) {
+			ERROR("%s:line=%d path_type exit\n", __FUNCTION__, __LINE__);
+			break;
+		}
+
+		usleep(100000);
+	}
+
+	if(!path_type)
+	{
+		ERROR("%s:hdmi and dp are disconnected\n", __FUNCTION__);
+		edid_set_default_prop();
+		return;
+	}
+
+	for (i=0; i<20; i++)
+	{
+		if(path_type == 1)
+			chmod("/sys/class/display/HDMI/prop", 0644);
+		else if(path_type == 2)
+			chmod("/sys/class/display/DP/prop", 0644);
+
+		if(path_type == 1)
+			fd = open("/sys/class/display/HDMI/prop", O_RDONLY);
+		else if(path_type == 2)
+			fd = open("/sys/class/display/DP/prop", O_RDONLY);
+
+		if (fd >= 0)
+		{
+			n = read(fd, prop_buf, sizeof(prop_buf) - 1);
+			if (n > 0)
+			{
+				prop_buf[n-1] = '\n';
+				ERROR("%s:line=%d,%s\n", __FUNCTION__, __LINE__, prop_buf);
+				sscanf(prop_buf, "valid=%d,width=%d,height=%d,xres=%d,yres=%d,hwrotation=%d,orientation=%d,vsync=%d,panel=%d,scan=%d\n",
+				&valid, &val.width, &val.height, &val.x_w, &val.x_h, &val.hwrotation, &val.einit,
+				&val.vsync, &val.panel, &val.scan);
+
+				if(!strcmp(prop_buf, last_prop_buf))
+					return;
+
+				snprintf(prop.x_w, sizeof(prop.x_w), "%d", val.x_w);
+				snprintf(prop.x_h, sizeof(prop.x_h), "%d", val.x_h);
+				snprintf(prop.hwrotation, sizeof(prop.hwrotation), "%d", val.hwrotation);
+				snprintf(prop.einit, sizeof(prop.einit), "%d", val.einit);
+				snprintf(prop.vsync, sizeof(prop.vsync), "%d", val.vsync);
+				snprintf(prop.panel, sizeof(prop.panel), "%d", val.panel);
+				snprintf(prop.scan, sizeof(prop.scan), "%d", val.scan);
+
+				if(valid)
+				{
+					ERROR("%s:line=%d, valid=%d,path_type=%d\n", __FUNCTION__, __LINE__, valid, path_type);
+					ERROR("%s:line=%d:file_read: xres=%s,yres=%s,hwrotation=%s,orientation=%s,vsync=%s,panel=%s,scan=%s\n",__FUNCTION__, __LINE__,
+					prop.x_w,
+					prop.x_h,
+					prop.hwrotation,
+					prop.einit,
+					prop.vsync,
+					prop.panel,
+					prop.scan);
+					break;
+				}
+			}
+			else
+			{
+				ERROR("error read n=%d bytes\n", n);
+			}
+			close(fd);
+		}
+		else
+		{
+			if(path_type == 1)
+			ERROR("error to open /sys/class/display/HDMI/prop\n");
+			else if (path_type == 2)
+			ERROR("error to open /sys/class/display/DP/prop\n");
+			else
+			ERROR("hdmi and dp are disconnected\n");
+		}
+
+		usleep(100000);
+	}
+
+	if(valid)
+	{
+		for(i=0; i<10; i++)
+		{
+			property_set("sys.xxx.x_w", prop.x_w);
+			property_set("sys.xxx.x_h", prop.x_h);
+			property_set("ro.sf.hwrotation", prop.hwrotation);
+			property_set("ro.orientation.einit", prop.einit);
+			property_set("sys.vr.scan", prop.vsync);
+			property_set("sys.vr.panel", prop.panel);
+			property_set("sys.vr.scan", prop.scan);
+
+			usleep(10000);
+
+			property_get("sys.xxx.x_w", temp.x_w);
+			property_get("sys.xxx.x_h", temp.x_h);
+			property_get("ro.sf.hwrotation", temp.hwrotation);
+			property_get("ro.orientation.einit", temp.einit);
+			property_get("sys.vr.scan", temp.vsync);
+			property_get("sys.vr.panel", temp.panel);
+			property_get("sys.vr.scan", temp.scan);
+
+			if((!strcmp(prop.x_w, temp.x_w)) && (!strcmp(prop.x_h, temp.x_h))
+				&& (!strcmp(prop.hwrotation, temp.hwrotation)) && (!strcmp(prop.einit, temp.einit))
+				&& (!strcmp(prop.vsync, temp.vsync)) && (!strcmp(prop.panel, temp.panel))
+				&& (!strcmp(prop.scan, temp.scan)))
+			{
+				ERROR("%s:line=%d write property successfully\n",__FUNCTION__, __LINE__);
+				memcpy(last_prop_buf, prop_buf, sizeof(prop_buf));
+				break;
+			}
+
+		}
+
+		ERROR("%s:line=%d,propert_get: xres=%s,yres=%s,hwrotation=%s,orientation=%s,vsync=%s,panel=%s,scan=%s\n",__FUNCTION__, __LINE__,
+			temp.x_w,
+			temp.x_h,
+			temp.hwrotation,
+			temp.einit,
+			temp.vsync,
+			temp.panel,
+			temp.scan);
+	}
+	else
+	{
+			edid_set_default_prop();
+			memcpy(last_prop_buf, prop_buf, sizeof(prop_buf));
+	}
+
+}
+
+#endif
+
+
 static void rk_parse_cpu(void)
 {
     int fd;
@@ -1279,6 +1508,9 @@ static void rk_parse_cpu(void)
         }
         close(fd);
     }
+    else {
+         ERROR("error to open /sys/devices/system/cpu/type\n");
+    }
 
     fd = open("/sys/devices/system/cpu/soc", O_RDONLY);
     if (fd >= 0) {
@@ -1290,6 +1522,9 @@ static void rk_parse_cpu(void)
             property_set("ro.rk.soc", buf);
         }
         close(fd);
+    }
+    else {
+         ERROR("error to open /sys/devices/system/cpu/soc\n");
     }
 }
 
@@ -1398,6 +1633,12 @@ int main(int argc, char** argv) {
     property_load_boot_defaults();
     start_property_service();
     rk_parse_cpu();
+
+#ifdef EDID_PROP_SUPPORT
+	memset(prop_buf, 0, sizeof(prop_buf));
+	memset(last_prop_buf, 0, sizeof(last_prop_buf));
+	rk_parse_edid_prop();
+#endif
 
     init_parse_config_file("/init.rc");
 
