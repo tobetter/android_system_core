@@ -80,7 +80,7 @@ typedef		unsigned char	    uint8;
 
 #define DEBUG_LOG 0   //open debug info
 
-#define SERIALNO_FROM_IDB 0  //if 1 read sn from idb3;  if 0 generate sn auto
+#define SERIALNO_FROM_IDB 1  //if 1 read sn from idb3;  if 0 generate sn auto
 
 #define SET_IFACE_DELAY                 300000
 #define SET_IFACE_POLLING_LOOP          20
