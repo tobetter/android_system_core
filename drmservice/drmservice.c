@@ -679,6 +679,7 @@ void generate_device_serialno(int len,char*result)
 			if(DEBUG_LOG)
 				SLOGE("---------------can not access %s,try to insmod wifi and try again\n",WIFI_MAC_FILENAME);
        		
+            /*
 			type = RK903;//check_wifi_chip_type();
 			if(type == MT6620)
 			{
@@ -711,6 +712,7 @@ void generate_device_serialno(int len,char*result)
 					goto bail;
 				}
 			}
+            */
 			
 		}
 		SLOGE("------------ set_iface ----------------");
