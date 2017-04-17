@@ -820,7 +820,7 @@ static void symlink_fstab() {
     char fstab_default_path[50] = "/fstab.";
     int ret = -1;
 
-    //such as: fstab.rk30board.bootmode.unknown
+    //such as: fstab.odroidn1.bootmode.unknown
     strcat(fstab_path, hardware);
     strcat(fstab_path, ".bootmode.");
     strcat(fstab_path, bootmode);
@@ -845,9 +845,6 @@ static void export_kernel_boot_props() {
         const char *dst_prop;
         const char *default_value;
     } prop_map[] = {
-#ifdef TARGET_BOARD_PLATFORM_SOFIA3GR
-	{ "ro.boot.serialno", "ro.serialno", "", },
-#endif
         { "ro.boot.mode",       "ro.bootmode",   "unknown", },
         { "ro.boot.baseband",   "ro.baseband",   "unknown", },
         { "ro.boot.bootloader", "ro.bootloader", "unknown", },
@@ -1070,156 +1067,8 @@ static void selinux_initialize(bool in_kernel_domain) {
     }
 }
 
-#ifdef TARGET_BOARD_PLATFORM_RK312x
-static void rk_312x_set_cpu(void)
-{
-    int fd;
-    char buf[128];
-    char value[16]={"1200000"};
-    bool can_set_cpu = false;
 
-    fd = open("/sys/devices/system/cpu/cpu0/cpufreq/scaling_available_frequencies",O_RDONLY);
-
-    if (fd >= 0) {
-        int n = read(fd, buf, sizeof(buf) - 1);
-        if (n > 0) {
-            buf[n-1] = '\0';
-            //check whether 1.2G in the freqs table
-            if(strstr(buf,value)){
-                can_set_cpu = true;
-            }
-            // ERROR("available_frequencies %s \n",buf);
-        }
-        close(fd);
-    }else{
-        ERROR("error to open scaling_available_frequencies");
-    }
-
-
-    //first set write permission to root
-    chmod("/sys/devices/system/cpu/cpu0/cpufreq/scaling_min_freq", 0644);
-    fd = open("/sys/devices/system/cpu/cpu0/cpufreq/scaling_min_freq",O_RDWR);
-    if (fd >= 0) {
-        if(can_set_cpu){
-            write(fd, value, strlen(value));
-        }//if(can_set_cpu)
-        close(fd);
-    }//if (fd >= 0)
-}
-#endif
-
-#ifdef TARGET_BOARD_PLATFORM_RK3288
-static void rk_3288_set_cpu(void)
-{
-    int fd;
-    char buf[128];
-    char value[16]={"1512000"};//1416000 1512000 1608000
-    bool can_set_cpu = false;
-
-    fd = open("/sys/devices/system/cpu/cpu0/cpufreq/scaling_available_frequencies",O_RDONLY);
-
-    if (fd >= 0) {
-        int n = read(fd, buf, sizeof(buf) - 1);
-        if (n > 0) {
-            buf[n-1] = '\0';
-            //check whether 1.4G in the freqs table
-            if(strstr(buf,value)){
-                can_set_cpu = true;
-            }
-            // ERROR("available_frequencies %s \n",buf);
-        }
-        close(fd);
-    }else{
-        ERROR("error to open scaling_available_frequencies");
-    }
-
-
-    //first set write permission to root
-    chmod("/sys/devices/system/cpu/cpu0/cpufreq/scaling_min_freq", 0644);
-    fd = open("/sys/devices/system/cpu/cpu0/cpufreq/scaling_min_freq",O_RDWR);
-    if (fd >= 0) {
-        if(can_set_cpu){
-            write(fd, value, strlen(value));
-        }//if(can_set_cpu)
-        close(fd);
-    }//if (fd >= 0)
-}
-#endif
-
-#ifdef TARGET_BOARD_PLATFORM_RK3368
-static void rk_3368_set_cpu(void)
-{
-    int fd;
-    char buf[128];
-    char value[16]={"1200000"};
-    char value_large[16] = {"1512000"};
-    bool can_set_cpu = false;
-    fd = open("sys/rockchip_thermal/temp",O_RDONLY);
-    if(fd >= 0){
-	 int n = read(fd, buf, sizeof(buf) - 1);
-	 if(n > 0){
-		char *cpu_temp = buf;
-		char needle[5] = ":";
-		char *cpu_temp_buf = strstr( cpu_temp, needle);
-	        if( cpu_temp_buf != NULL )
-		{
-		    cpu_temp = cpu_temp_buf + strlen(needle);
-		}
-		if(cpu_temp != NULL){
-			int current_tmp = atoi(cpu_temp);
-			if(current_tmp >= 100){
-				ERROR("The current temperature:%d is greater than 100\n",current_tmp);
-				return;
-	                }
-		}
-	 }
-	close(fd);
-	memset(buf,0,128);
-    }else{
-	ERROR("error to open sys/rockchip_thermal/temp");
-    }
-
-    fd = open("/sys/devices/system/cpu/cpu4/cpufreq/scaling_available_frequencies",O_RDONLY);
-
-    if (fd >= 0) {
-        int n = read(fd, buf, sizeof(buf) - 1);
-        if (n > 0) {
-            buf[n-1] = '\0';
-            //check whether 1.2G in the freqs table
-            if(strstr(buf,value)){
-                can_set_cpu = true;
-            }
-            // ERROR("available_frequencies %s \n",buf);
-        }
-        close(fd);
-    }else{
-        ERROR("error to open scaling_available_frequencies");
-    }
-
-
-    //first set write permission to root
-    chmod("/sys/devices/system/cpu/cpu0/cpufreq/scaling_min_freq", 0644);
-    fd = open("/sys/devices/system/cpu/cpu0/cpufreq/scaling_min_freq",O_RDWR);
-    if (fd >= 0) {
-        if(can_set_cpu){
-            write(fd, value, strlen(value));
-        }//if(can_set_cpu)
-        close(fd);
-    }//if (fd >= 0)
-
-    //set big core
-    chmod("/sys/devices/system/cpu/cpu4/cpufreq/scaling_min_freq", 0644);
-    fd = open("/sys/devices/system/cpu/cpu4/cpufreq/scaling_min_freq",O_RDWR);
-    if (fd >= 0) {
-        if(can_set_cpu){
-            write(fd, value_large, strlen(value_large));
-        }//if(can_set_cpu)
-        close(fd);
-    }//if (fd >= 0)
-}
-#endif
-
-#ifdef TARGET_BOARD_PLATFORM_RK3399
+#ifdef TARGET_PRODUCT_ODROIDN1
 static void rk_3399_set_cpu(void)
 {
     int fd;
@@ -1542,18 +1391,8 @@ int main(int argc, char** argv) {
     umask(0);
 
     add_environment("PATH", _PATH_DEFPATH);
-#ifdef TARGET_BOARD_PLATFORM_RK3288
-        rk_3288_set_cpu();
-#else
-#ifdef TARGET_BOARD_PLATFORM_RK3368
-	rk_3368_set_cpu();
-#endif
-#ifdef TARGET_BOARD_PLATFORM_RK312x
-	rk_312x_set_cpu();
-#endif
-#ifdef TARGET_BOARD_PLATFORM_RK3399
+#ifdef TARGET_PRODUCT_ODROIDN1
     rk_3399_set_cpu();
-#endif
 #endif
 
     bool is_first_stage = (argc == 1) || (strcmp(argv[1], "--second-stage") != 0);

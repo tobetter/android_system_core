@@ -23,20 +23,8 @@ endif
 
 init_options += -DLOG_UEVENTS=0
 
-ifeq ($(strip $(TARGET_BOARD_PLATFORM)), rk3288)
-	init_options += -DTARGET_BOARD_PLATFORM_RK3288
-endif
-ifeq ($(strip $(TARGET_BOARD_PLATFORM)), sofia3gr)
-	init_options += -DTARGET_BOARD_PLATFORM_SOFIA3GR
-endif
-ifeq ($(strip $(TARGET_BOARD_PLATFORM)), rk3368)
-	init_options += -DTARGET_BOARD_PLATFORM_RK3368
-endif
-ifeq ($(strip $(TARGET_BOARD_PLATFORM)), rk312x)
-	init_options += -DTARGET_BOARD_PLATFORM_RK312x
-endif
-ifeq ($(strip $(TARGET_BOARD_PLATFORM)), rk3399)
-	init_options += -DTARGET_BOARD_PLATFORM_RK3399
+ifeq ($(strip $(TARGET_PRODUCT)), odroidn1)
+	init_options += -DTARGET_PRODUCT_ODROIDN1
 endif
 ifeq ($(strip $(TARGET_BOARD_PLATFORM_PRODUCT)), box)
     LOCAL_CFLAGS += -DTARGET_BOARD_PLATFORM_PRODUCT_BOX

@@ -361,7 +361,7 @@ int rknand_sys_storage_test_sn(void)
     return 0;
 }
 
-int rk3399_vendor_storage_read_sn(void)
+int odroidn1_vendor_storage_read_sn(void)
 {
     uint32 i;
 	int ret ;
@@ -1008,12 +1008,12 @@ int main( int argc, char *argv[] )
 	property_get("ro.boot.copy_dest", propbuf_dest, "");
 	property_get("ro.board.platform", prop_board_platform, "");
 	SLOGE("get prop_board_platform,prop_board_platform = %s , diff=%d",prop_board_platform,
-		strcmp(prop_board_platform,"rk3399"));
+		strcmp(prop_board_platform, "odroidn1"));
 		
 	if(SERIALNO_FROM_IDB)//read serialno form idb
 	{		
-		if(!strcmp(prop_board_platform,"rk3399")){
-			rk3399_vendor_storage_read_sn();
+		if(!strcmp(prop_board_platform, "odroidn1")){
+			odroidn1_vendor_storage_read_sn();
 		}else{
 			rknand_sys_storage_test_sn();
 		}
