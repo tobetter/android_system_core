@@ -10,7 +10,7 @@ else
 init_options += -DALLOW_LOCAL_PROP_OVERRIDE=0 -DALLOW_DISABLE_SELINUX=0
 endif
 
-init_options += -DLOG_UEVENTS=0
+init_options += -DLOG_UEVENTS=1
 
 init_cflags += \
     $(init_options) \
@@ -48,6 +48,7 @@ LOCAL_SRC_FILES:= \
     signal_handler.cpp \
     ueventd.cpp \
     ueventd_parser.cpp \
+    ueventd_odroid.cpp \
     watchdogd.cpp \
 
 LOCAL_MODULE:= init
@@ -76,11 +77,18 @@ LOCAL_STATIC_LIBRARIES := \
     libc++_static \
     libdl \
     libsparse_static \
-    libz
+    libz \
+    libxml2 \
+    libicuuc_static \
+    libm
 
 LOCAL_C_INCLUDES += system/extras/ext4_utils \
 		    external/zlib \
 		    vendor/amlogic/frameworks/services/systemcontrol
+
+LOCAL_C_INCLUDES += \
+    external/libxml2/include \
+    external/icu/icu4c/source/common
 
 # Create symlinks
 LOCAL_POST_INSTALL_CMD := $(hide) mkdir -p $(TARGET_ROOT_OUT)/sbin; \

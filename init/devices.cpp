@@ -21,6 +21,7 @@
 #include <stdlib.h>
 #include <sys/stat.h>
 #include <sys/types.h>
+#include <termios.h>
 
 #include <fcntl.h>
 #include <dirent.h>
@@ -734,6 +735,70 @@ static void handle_generic_device_event(struct uevent *uevent)
              uevent->major, uevent->minor, links);
 }
 
+extern int odroid_usbtty_find_by_product(char* str, speed_t *_baudrate);
+extern int odroid_tty_set_baudrate(const char* devname, speed_t baudrate);
+extern int parse_uevent_from_sys(const char *file, const char *keyword, char **_out);
+
+static const char *ttygps_devname = "/dev/ttyGPS";
+
+static int odroid_tty_device_lookup(struct uevent *uevent, char** _devname)
+{
+    if ((uevent == NULL) || (_devname == NULL))
+        return -EINVAL;
+
+    int ret = -EINVAL;
+    char *file = NULL;
+
+    if (asprintf(&file, "/sys/dev/char/%d:%d/uevent",
+                uevent->major, uevent->minor) > 0) {
+        ret = parse_uevent_from_sys(file, "DEVNAME=", _devname);
+        free(file);
+    }
+
+    return ret;
+}
+
+static void handle_tty_device_event(struct uevent *uevent)
+{
+    handle_generic_device_event(uevent);
+
+    if (!strcmp(uevent->action, "remove")) {
+        unlink(ttygps_devname);
+        return;
+    }
+
+    if (!strcmp(uevent->action, "add")) {
+        char *path = strdup(uevent->path);
+        char *dir = strstr(path, "tty");
+        if (dir) {
+            *(char *)dir = '\0';
+
+            char *product = NULL;
+            char *devname = NULL;
+            char *file = NULL;
+
+            if (asprintf(&file, "/sys%suevent", path) > 0) {
+                if (parse_uevent_from_sys(file, "PRODUCT=", &product) == 0) {
+                    speed_t baudrate;
+                    if (odroid_usbtty_find_by_product(product, &baudrate) &&
+                            (odroid_tty_device_lookup(uevent, &devname) == 0)) {
+                        char *source;
+                        if (asprintf(&source, "/dev/%s", devname) > 0) {
+                            symlink(source, ttygps_devname);
+                            odroid_tty_set_baudrate(source, baudrate);
+                            free(source);
+                        }
+                        free(devname);
+                    }
+                    free(product);
+                }
+                free(file);
+            }
+        }
+        free(path);
+    }
+}
+
 static void handle_device_event(struct uevent *uevent)
 {
     if (!strcmp(uevent->action,"add") || !strcmp(uevent->action, "change") || !strcmp(uevent->action, "online"))
@@ -743,6 +808,8 @@ static void handle_device_event(struct uevent *uevent)
         handle_block_device_event(uevent);
     } else if (!strncmp(uevent->subsystem, "platform", 8)) {
         handle_platform_device_event(uevent);
+    } else if (!strncmp(uevent->subsystem, "tty", 3)) {
+        handle_tty_device_event(uevent);
     } else {
         handle_generic_device_event(uevent);
     }
@@ -1004,3 +1071,5 @@ int get_device_fd()
 {
     return device_fd;
 }
+
+/* vim: set ts=4 sw=4 expandtab: */
